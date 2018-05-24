@@ -150,4 +150,4 @@ RTUdata$selected<-FALSE
 RTUdata$selected[RTUdata$EEID%in%RTUsample1$EEID|RTUdata$EEID%in%RTUsample2$EEID]<-TRUE
 table(RTUdata$selected,RTUdata$strata)
 
-Remaining<-RTUdata %>% filter(!selected) %>% group_by(strata) %>% summarise(n=n(),email=sum(validEmail!="No valid email"))
+Remaining<-RTUdata %>% filter(!selected&!local_government&!drop_A_pre0714) %>% group_by(strata) %>% summarise(n=n(),email=sum(validEmail!="No valid email"),ue=n_distinct(validEmail))
