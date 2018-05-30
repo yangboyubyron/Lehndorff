@@ -151,3 +151,30 @@ RTUdata$selected[RTUdata$EEID%in%RTUsample1$EEID|RTUdata$EEID%in%RTUsample2$EEID
 table(RTUdata$selected,RTUdata$strata)
 
 Remaining<-RTUdata %>% filter(!selected&!local_government&!drop_A_pre0714) %>% group_by(strata) %>% summarise(n=n(),email=sum(validEmail!="No valid email"),ue=n_distinct(validEmail))
+
+# sample 3 (and 4). clear enviroment
+EEIDS<-read.csv("~/desktop/EE_RTU_IDs.csv",stringsAsFactors=FALSE)
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUFrame.csv",stringsAsFactors = FALSE)
+RTUsample1<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft0420.csv",stringsAsFactors=FALSE)
+RTUsample2<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/second mailing/RTUdraft_SAMPLE2_0504.csv",stringsAsFactors = FALSE)
+RTUdata<-left_join(RTUin,select(EEIDS,c(Site_Address_Combined2,EEID)),by="Site_Address_Combined2")
+
+RTUdata$select<-0
+RTUdata$select[RTUdata$EEID%in%RTUsample1$EEID|RTUdata$EEID%in%RTUsample2$EEID]<-1
+table(RTUdata$select)
+
+set.seed(287349)
+RTUpre<-RTUdata%>%filter(!local_government&!drop_A_pre0714&!drop_C_pre0714&select==0&validEmail!="No valid email")%>%group_by(strata)%>%mutate(rand=runif(length(strata),0,1),rank=rank(rand))
+RTUpre$select[RTUpre$strata=="3C"&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"]<-1
+RTUpre$select[RTUpre$strata=="12C"&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"]<-1
+
+RTUout<-select(RTUpre%>%filter(select==1) %>% mutate(rand=runif(length(strata),0,1))%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata,rand))
+RTUout$batch<-1
+RTUout$batch[RTUout$rand>=median(RTUout$rand)]<-2
+table(RTUout$batch)
+
+table(RTUpre$select,RTUpre$strata)
+table(RTUpre$strata)
+
+# write.csv(select(subset(RTUout,batch==1),c(-rand,-batch)),"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE3_0530.csv",row.names = FALSE)
+# write.csv(select(subset(RTUout,batch==2),c(-rand,-batch)),"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE4_0530.csv",row.names = FALSE)
