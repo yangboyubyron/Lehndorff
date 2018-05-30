@@ -40,13 +40,15 @@ lighting<-bind_rows(exlite,inlite) %>% filter(LightingLampCategory!="Missing Lam
 lighting$LightingLampCategory[lighting$LightingLampCategory=="Rope Lamps"]<-"Other"
 table(lighting$LightingLampCategory)
 
-Lightagg<-lighting %>% group_by(merge=paste(siteid,room_it,sep = "-")) %>% summarise(n=n(),CF=sum(LightingLampCategory=="Compact Fluorescent")>0,Halo=sum(LightingLampCategory=="Halogen")>0,Inc=sum(LightingLampCategory=="Incandescent")>0,LED=sum(LightingLampCategory=="LED")>0,LF=sum(LightingLampCategory=="Linear Fluorescent")>0,Other=sum(LightingLampCategory=="Other")>0)
+# Lightagg<-lighting %>% group_by(merge=paste(siteid,room_it,sep = "-")) %>% summarise(n=n(),CF=sum(LightingLampCategory=="Compact Fluorescent")>0,Halo=sum(LightingLampCategory=="Halogen")>0,Inc=sum(LightingLampCategory=="Incandescent")>0,LED=sum(LightingLampCategory=="LED")>0,LF=sum(LightingLampCategory=="Linear Fluorescent")>0,Other=sum(LightingLampCategory=="Other")>0)
+Lightagg<-lighting %>% group_by(merge=paste(siteid,room_it,sep = "-")) %>% summarise(n=n(),CF=sum(LightingLampCategory=="Compact Fluorescent"),Halo=sum(LightingLampCategory=="Halogen"),Inc=sum(LightingLampCategory=="Incandescent"),LED=sum(LightingLampCategory=="LED"),LF=sum(LightingLampCategory=="Linear Fluorescent"),Other=sum(LightingLampCategory=="Other"))
 
 RoomLight<-left_join(RoomType,Lightagg,by="merge")
 RoomLight[is.na(RoomLight)]<-0
 table(RoomLight$BuildingType_clean[!RoomLight$site%in%LIweight$siteid[LIweight$CARE.Non=="NC"]],RoomLight$RoomType[!RoomLight$site%in%LIweight$siteid[LIweight$CARE.Non=="NC"]])
 
-RLaggCARE<-RoomLight %>% filter(!site%in%LIweight$siteid[LIweight$CARE.Non=="NC"]) %>% group_by(Building_Type=BuildingType_clean,Room_Type=RoomType) %>% summarise(n=n(),CFL=mean(CF),Halogen=mean(Halo),Incandescent=mean(Inc),LED=mean(LED),Linear_Fluorescent=mean(LF),Other=mean(Other))
-write.xlsx(as.data.frame(RLaggCARE),"/Users/Lehndorff/Desktop/LowIncomeDataRequest.xlsx",row.names = FALSE,append = TRUE,sheetName = "Lighting Penetration")
+# RLaggCARE<-RoomLight %>% filter(!site%in%LIweight$siteid[LIweight$CARE.Non=="NC"]) %>% group_by(Building_Type=BuildingType_clean,Room_Type=RoomType) %>% summarise(n=n(),CFL=mean(CF),Halogen=mean(Halo),Incandescent=mean(Inc),LED=mean(LED),Linear_Fluorescent=mean(LF),Other=mean(Other))
+RLaggCARE<-RoomLight %>% filter(!site%in%LIweight$siteid[LIweight$CARE.Non=="NC"]) %>% group_by(Building_Type=BuildingType_clean,Room_Type=RoomType) %>% summarise(n=sum(n),CFL=sum(CF)/sum(n),Halogen=sum(Halo)/sum(n),Incandescent=sum(Inc)/sum(n),LED=sum(LED)/sum(n),Linear_Fluorescent=sum(LF)/sum(n),Other=sum(Other)/sum(n))
+# write.xlsx(as.data.frame(RLaggCARE),"/Users/Lehndorff/Desktop/LowIncomeDataRequest.xlsx",row.names = FALSE,append = TRUE,sheetName = "Lighting Penetration")
 
 
