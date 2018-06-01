@@ -178,3 +178,23 @@ table(RTUpre$strata)
 
 # write.csv(select(subset(RTUout,batch==1),c(-rand,-batch)),"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE3_0530.csv",row.names = FALSE)
 # write.csv(select(subset(RTUout,batch==2),c(-rand,-batch)),"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE4_0530.csv",row.names = FALSE)
+
+# create file with all data and sample groups. Clear enviroment.
+EEIDS<-read.csv("~/desktop/EE_RTU_IDs.csv",stringsAsFactors=FALSE)
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUFrame.csv",stringsAsFactors = FALSE)
+RTUsample1<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft0420.csv",stringsAsFactors=FALSE)
+RTUsample2<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/second mailing/RTUdraft_SAMPLE2_0504.csv",stringsAsFactors = FALSE)
+RTUsample3<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE3_0530.csv",stringsAsFactors=FALSE)
+RTUsample4<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE4_0530.csv",stringsAsFactors = FALSE)
+RTUdata<-left_join(RTUin,select(EEIDS,c(Site_Address_Combined2,EEID)),by="Site_Address_Combined2")
+
+RTUdata$Sample<-"Not yet sampled"
+RTUdata$Sample[RTUdata$EEID%in%RTUsample1$EEID]<-"Sample 1"
+RTUdata$Sample[RTUdata$EEID%in%RTUsample2$EEID]<-"Sample 2"
+RTUdata$Sample[RTUdata$EEID%in%RTUsample3$EEID]<-"Sample 3"
+RTUdata$Sample[RTUdata$EEID%in%RTUsample4$EEID]<-"Sample 4"
+table(RTUdata$Sample)
+
+# write.csv(RTUdata,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",row.names = FALSE)
+
+
