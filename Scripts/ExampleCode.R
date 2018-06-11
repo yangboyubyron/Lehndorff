@@ -16,7 +16,7 @@ BusMeasures<-subset(SPSmeasures,SPSmeasures$Integration.Program.Segment=="Busine
 
 # aggregate the measure-level data by measure type to find the count of each measure, the gross savings, and the number of unique accounts that had that measure type.
 ## MeasureSavings is BusMeasures then grouped by Product then aggregated such that n is the number of instances (rows) of the group, kWh is sum of Customer.kWh of the group ignoring NAs, and numaccounts is the count of unique Account.Number of the group
-MeasureSavings<-BusMeasures%>%group_by(Product)%>%summarise(n=n(),kWh=sum(Customer.kWh,na.rm=TRUE),numaccounts=length(unique(Account.Number)))
+MeasureSavings<-BusMeasures%>%group_by(Product)%>%summarise(n=n(),kWh=sum(Customer.kWh,na.rm=TRUE),numaccounts=n_distinct(Account.Number))
 
 # use a for loop to create a measure type group (custom, lighting, other) starting with a default of NA
 ##BusMeasures MeasureGroup is NA
