@@ -12,7 +12,7 @@ colnames(SPSmeasures)<-sub("Opportunity..","",colnames(SPSmeasures),fixed = TRUE
 
 # look at only residential measures (subset()) -- subset data to where the segment variable is Business
 ## BusMeasures is a subset of SPSmeasures where Integration.Program.Segment equals Business
-BusMeasures<-subset(SPSmeasures,SPSmeasures$Integration.Program.Segment=="Business")
+BusMeasures<-subset(SPSmeasures,Integration.Program.Segment=="Business")
 
 # aggregate the measure-level data by measure type to find the count of each measure, the gross savings, and the number of unique accounts that had that measure type.
 ## MeasureSavings is BusMeasures then grouped by Product then aggregated such that n is the number of instances (rows) of the group, kWh is sum of Customer.kWh of the group ignoring NAs, and numaccounts is the count of unique Account.Number of the group
@@ -56,13 +56,17 @@ ContactSavings<-left_join(BusProjects,cleancontact,by="Account.Number")%>%filter
 ##plot ContactSavings with less than 1000 Employees
 ##add a point plot where x is Employees, y is TotalSave and color represents City
 ggplot(ContactSavings%>%filter(Employees<1000))+
-  geom_point(aes(x=Employees,y=TotalSave,color=City))
+  geom_point(aes(x=Employees,y=TotalSave,color=City))+
+  labs(y="Total Savings")+
+  ggtitle("Savings by Number of Employees and City")
 
 #When were individual measures installed how large were they and what type were they?
 ##plot BusMeasures
 ##add a jitter point plot where x is date y is the log of Customer.kWh and color represents MeasureGroup
 ggplot(BusMeasures)+
-  geom_jitter(aes(x=date,y=log(Customer.kWh),color=MeasureGroup))
+  geom_jitter(aes(x=date,y=log(Customer.kWh),color=MeasureGroup))+
+  labs(x="Date",y="Log of Savings", color="Measure Type")+
+  ggtitle("Measure Installation over Time by Type")
 
 #How much savings over time did each measure group account for and what was the total savings over time?
 ##BusMeasuresGroup is BusMeasures ordered by date filtering out row with NA Customer.kWh then grouped by MeasureGroup then add a new column, RunSave which is the cumulative total of Customer.kWh for the MeasureGroup
@@ -74,13 +78,17 @@ ggplot(BusMeasuresGroup)+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Custom"),color="red",aes(x=date,y=RunSave))+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Lighting"),color="green",aes(x=date,y=RunSave))+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Other"),color="blue",aes(x=date,y=RunSave))+
-  geom_line(color="black",aes(x=date,y=cumsum(Customer.kWh)))
+  geom_line(color="black",aes(x=date,y=cumsum(Customer.kWh)))+
+  labs(x="Date",y="Total Savings")+
+  ggtitle("Total Savings over Time by Type")
 
 #When did the savings from each measure group occur? i.e. at what point was 70% of lighting savings installed
 ggplot(BusMeasuresGroup)+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Custom"),color="red",aes(x=date,y=RunSave/sum(Customer.kWh)))+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Lighting"),color="green",aes(x=date,y=RunSave/sum(Customer.kWh)))+
   geom_line(data=subset(BusMeasuresGroup,MeasureGroup=="Other"),color="blue",aes(x=date,y=RunSave/sum(Customer.kWh)))+
-  geom_line(color="black",aes(x=date,y=cumsum(Customer.kWh)/sum(Customer.kWh)))
+  geom_line(color="black",aes(x=date,y=cumsum(Customer.kWh)/sum(Customer.kWh)))+
+  labs(x="Date",y="Percent of Total Savings")+
+  ggtitle("Percent of Savings over Time by Type")
 
  # apropos, for, if, piping, summarise, mutate, group_by, left_join, ggplot, weighted.mean, |, &, length, unique, select, n(), is.na, gsub, %in%
