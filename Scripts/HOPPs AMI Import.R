@@ -122,7 +122,7 @@ for(site in unique(DataAllsum$loc)){
   plotdata<-subset(DataAllsum,loc==site)
   plotdata$maxKWH[plotdata$maxKWH<1]<-NA
   plotdata$diff<-plotdata$HVACtotalWB-plotdata$maxKWH
-  forplot<-melt(select(plotdata %>% ungroup(),c(Date.Time,Whole_Building=HVACtotalWB,HVAC=maxKWH,Imputed_non_HVAC=diff)),id = "Date.Time")
+  forplot<-melt(select(plotdata %>% ungroup(),c(Date.Time,`Whole Building`=HVACtotalWB,HVAC=maxKWH,`Imputed non-HVAC`=diff)),id = "Date.Time")
   plot<-ggplot(forplot)+
     geom_point(aes(x=as.Date(Date.Time),y=value,color=variable,alpha=variable))+
     scale_color_manual(values = c("red","blue","purple"))+
