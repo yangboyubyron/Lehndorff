@@ -2,6 +2,7 @@ library(evergreen)
 library(dplyr)
 library(xlsx)
 library(ggplot2)
+library(reshape2)
 
 # read submetering data
 data.folder<-"/volumes/Projects/401027 - AMI Phase II/Data - CONFIDENTIAL/SCE Data/Data Delivery 010218/DR SCE AMI Phase II Field Data/Pre-Processed Data/"
@@ -120,14 +121,15 @@ DataAllsum<-left_join(wholebuild%>%group_by(loc,Date.Time=as.Date(formdate))%>%s
 for(site in unique(DataAllsum$loc)){
   plotdata<-subset(DataAllsum,loc==site)
   plotdata$maxKWH[plotdata$maxKWH<1]<-NA
-  plot<-ggplot(plotdata)+
-    geom_point(aes(x=as.Date(Date.Time),y=HVACtotalWB),color="blue")+
-    geom_point(aes(x=as.Date(Date.Time),y=maxKWH),color="red")+
-    geom_point(aes(x=as.Date(Date.Time),y=HVACtotalWB-maxKWH),color="purple",alpha=.3)+
-    # geom_line(aes(x=as.Date(Date.Time),y=(maxKWH/HVACtotalWB)*mean(range(c(HVACtotalWB,maxKWH),na.rm = TRUE))),color="green")+
-    xlab("Date")+
-    ylab("kWh")+
-    ggtitle(site)
+  plotdata$diff<-plotdata$HVACtotalWB-plotdata$maxKWH
+  forplot<-melt(select(plotdata %>% ungroup(),c(Date.Time,Whole_Building=HVACtotalWB,HVAC=maxKWH,Imputed_non_HVAC=diff)),id = "Date.Time")
+  plot<-ggplot(forplot)+
+    geom_point(aes(x=as.Date(Date.Time),y=value,color=variable,alpha=variable))+
+    scale_color_manual(values = c("red","blue","purple"))+
+    scale_alpha_manual(values = c(1,1,.3))+
+    labs(x="Date",y="kWh",color="Energy Type")+
+    guides(alpha=FALSE)+
+    ggtitle(paste("Energy Usage at",site,sep = " "))
   # ggsave(paste("~/desktop/HOPPs/Graphs/",site,".jpg",sep = ""),plot=plot,device = "jpeg")
   print(plot)
 }
