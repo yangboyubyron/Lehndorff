@@ -3,6 +3,7 @@ library(dplyr)
 library(xlsx)
 library(ggplot2)
 library(reshape2)
+library(zoo)
 
 # read submetering data
 data.folder<-"/volumes/Projects/401027 - AMI Phase II/Data - CONFIDENTIAL/SCE Data/Data Delivery 010218/DR SCE AMI Phase II Field Data/Pre-Processed Data/"
@@ -122,9 +123,16 @@ for(site in unique(DataAllsum$loc)){
   plotdata<-subset(DataAllsum,loc==site)
   plotdata$maxKWH[plotdata$maxKWH<1]<-NA
   plotdata$diff<-plotdata$HVACtotalWB-plotdata$maxKWH
+  plotdata$aveWB<-rollmean(plotdata$HVACtotalWB,k=28,align = "right",fill = NA)
+  plotdata$aveHVAC<-NA
+  plotdata$aveHVAC[!is.na(plotdata$maxKWH)]<-rollmean(plotdata$maxKWH[!is.na(plotdata$maxKWH)],k=28,align = "right",fill = NA)
+  plotdata$avediff<-NA
+  plotdata$avediff[!is.na(plotdata$diff)]<-rollmean(plotdata$diff[!is.na(plotdata$diff)],k=28,align = "right",fill = NA)
   forplot<-melt(select(plotdata %>% ungroup(),c(Date.Time,`Whole Building`=HVACtotalWB,HVAC=maxKWH,`Imputed non-HVAC`=diff)),id = "Date.Time")
-  plot<-ggplot(forplot)+
-    geom_point(aes(x=as.Date(Date.Time),y=value,color=variable,alpha=variable))+
+  forplot2<-melt(select(plotdata %>% ungroup(),c(Date.Time,`Whole Building`=aveWB,HVAC=aveHVAC,`Imputed non-HVAC`=avediff)),id = "Date.Time")
+  plot<-ggplot()+
+    geom_point(data=forplot,aes(x=as.Date(Date.Time),y=value,color=variable,alpha=variable))+
+    geom_line(data=forplot2,aes(x=as.Date(Date.Time),y=value,color=variable,alpha=variable))+
     scale_color_manual(values = c("red","blue","purple"))+
     scale_alpha_manual(values = c(1,1,.3))+
     labs(x="Date",y="kWh",color="Energy Type")+
@@ -133,10 +141,6 @@ for(site in unique(DataAllsum$loc)){
   # ggsave(paste("~/desktop/HOPPs/Graphs/",site,".jpg",sep = ""),plot=plot,device = "jpeg")
   print(plot)
 }
-
-# calculate average pre EER
-EER<-read.csv("~/desktop/2 - Results Analysis - 170430_Final.csv")
-EERagg<-EER%>%group_by(Site.Name,Site..)%>%summarise(aEERin=weighted.mean(Test.In.System.Field.EER,w=Tons),aEERout=weighted.mean(Test.Out.System.Field.EER,w=Tons),exantesav=sum(Projected.Annual.Savings.Wh/1000))
 
 # export data
 Data60out<-Data60%>%filter(equip!="TotalSystem")%>%group_by(Site=loc,Date.Time)%>%summarise(sumHVACWh=sum(value))
