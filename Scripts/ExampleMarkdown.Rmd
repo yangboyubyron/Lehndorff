@@ -1,0 +1,144 @@
+---
+title: "Markdown Version of Example Code"
+author: "Hans Lehndorff"
+date: "6/19/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+lapply(c('ggplot2','dplyr','knitr','reshape2'), 
+       FUN=library, character.only = TRUE)
+```
+
+## Example Code
+
+The purpose of this code is to provide functional examples of functions and code structures commonly used at Evergreen (at least by me, HL).
+This version of the code has had all of the code removed so it can instead be used for learning R in an Evergreen specific setting.
+Lines with a one comment (#) denote a data analysis task. Lines with two comments (##) denote my (HL) english language version of the R code (which has been deleted) that would accomplish the described analysis task.
+Given that this code has been repurposed, the english language lines may not be very useful or may only be useful after the code has been writen. Again, the english language lines describe the code that I (HL) wrote to accomplish these analysis tasks.
+
+Finally, the underlying code has been presented in a Markdown format.
+
+# Load and Clean Data
+Measure level data for SPS projects and their associated contact information is loaded. Column names cleaned. And data subsetted to only business measures.
+
+```{r data}
+# read data (read.csv()) -- SPS measure level data, strings should not be read as factors for simplicity.
+SPSmeasures<-read.csv("/volumes/Projects/457001 - New Mexico/Data/SPS/2017 Final Salesforce Data/2017 NM DSM Evals - Measure Level Data.csv",stringsAsFactors = FALSE)
+SPScontact<-read.csv("/volumes/Projects/457001 - New Mexico/Data/SPS/Business Comprehensive/Business Comprehensive - Contact Data.csv",stringsAsFactors = FALSE)
+
+#clean up column names by removing prefix "Opportunity"
+colnames(SPSmeasures)<-sub("Opportunity..","",colnames(SPSmeasures),fixed = TRUE)
+
+# look at only residential measures (subset()) -- subset data to where the segment variable is Business
+BusMeasures<-subset(SPSmeasures,Integration.Program.Segment=="Business")
+
+```
+
+# Initial Aggregation
+
+Measure data is group by measure type (Product) and summarise to calculate count of each type, savings, and number of associated accounts
+```{r agg1}
+# aggregate the measure-level data by measure type to find the count of each measure, the gross savings, and the number of unique accounts that had that measure type.
+MeasureSavings<-BusMeasures%>%group_by(Product)%>%summarise(n=n(),kWh=sum(Customer.kWh,na.rm=TRUE),numaccounts=n_distinct(Account.Number))
+
+```
+
+This aggregatrion shows that there are `r nrow(MeasureSavings)` unique measures in this SPS program accounting for `r sum(MeasureSavings$kWh)` in kWh savings. In particular, `r MeasureSavings$Product[MeasureSavings$kWh==max(MeasureSavings$kWh)]` is the largest total savings measure with `r max(MeasureSavings$kWh)` kWh from `r MeasureSavings$n[MeasureSavings$kWh==max(MeasureSavings$kWh)]` total measures and `r MeasureSavings$numaccounts[MeasureSavings$kWh==max(MeasureSavings$kWh)]` unique accounts.
+
+Here is the complete table.
+
+```{r,echo=FALSE}
+kable(MeasureSavings)
+```
+
+# Measure Groupings
+
+This list of measures can be grouped together to further aid aggregation. In this case a measure should be considered "Custom" if "Custom" is in the product description, else "Lighting" if "Lighting" is the product description else "Other" for all other measures. 
+
+```{r}
+# use a for loop to create a measure type group (custom, lighting, other) starting with a default of NA
+BusMeasures$MeasureGroup<-NA
+for(i in 1:nrow(BusMeasures)){
+  if(grepl("custom",BusMeasures$Product[i],ignore.case = TRUE)){
+    BusMeasures$MeasureGroup[i]<-"Custom"
+  }else if(grepl("lighting",BusMeasures$Product[i],ignore.case = TRUE)){
+    BusMeasures$MeasureGroup[i]<-"Lighting"
+  } else {
+    BusMeasures$MeasureGroup[i]<-"Other"
+  }
+}
+```
+
+Here are the results of this grouping.
+
+```{r,echo=FALSE}
+kable(BusMeasures %>% group_by(MeasureGroup) %>% summarise(count=n()))
+```
+
+## Savings Over Time
+
+This measure group data along with the installation date for each measure can be used to look at when measures are being installed throughout the year. But first, the installation date variable needs to be converted to an R date format.
+
+```{r}
+# extract close date from the measure data
+BusMeasures$date<-as.Date(BusMeasures$Close.Date,format = "%m/%d/%Y")
+
+```
+
+Now, measure savings by measure group can be plotted against time. A jitter plot is used to avoid point overlap, and log scale to better show the variety of values.
+
+```{r}
+#When were individual measures installed how large were they and what type were they?
+ggplot(BusMeasures)+
+  geom_jitter(aes(x=date,y=log(Customer.kWh),color=MeasureGroup))+
+  labs(x="Date",y="Log of Savings", color="Measure Type")+
+  ggtitle("Measure Installation over Time by Type")
+
+```
+
+While Custom projects generally seem to be the largest, how did the amount savings of each measures change over time?
+For example, what measure group had the most savings by July?
+
+For this, cumulative savings by type needs to be calculated.
+
+```{r}
+#How much savings over time did each measure group account for and what was the total savings over time?
+BusMeasuresGroup<-BusMeasures %>% arrange(date) %>% group_by(MeasureGroup,date) %>% summarise(sumsave=sum(Customer.kWh,na.rm = TRUE)) %>% group_by(MeasureGroup) %>% mutate(RunSave=cumsum(sumsave))
+
+```
+
+This data can then be plotted. 
+
+```{r}
+ggplot(BusMeasuresGroup)+
+  geom_point(aes(x=as.Date(date),y=RunSave,color=MeasureGroup))+
+  geom_smooth(aes(x=as.Date(date),y=RunSave,color=MeasureGroup),se=FALSE, method = "loess")+
+  labs(x="Date",y="Total Savings")+
+  ggtitle("Total Savings over Time by Type")
+```
+
+Alternatively, this data could be used to look at when in time measures from each group occured in percentage terms.
+For example, was more than half of the savings in each group already accounted for on July 1st?
+
+```{r}
+BusMeasuresGroup<-BusMeasuresGroup %>% group_by(MeasureGroup) %>% mutate(PercentSave=RunSave/sum(sumsave))
+ggplot(BusMeasuresGroup)+
+  geom_point(aes(x=as.Date(date),y=PercentSave,color=MeasureGroup))+
+  geom_smooth(aes(x=as.Date(date),y=PercentSave,color=MeasureGroup),se=FALSE, method = "loess")+
+  labs(x="Date",y="Percent of Total Savings")+
+  ggtitle("Percent of Total Savings over Time by Type")
+```
+
+Finally, the change in the mix of measures can be looked at over time.
+That is, was the distribution of savings by group the same on April 1st as it was on October 1st?
+
+```{r}
+MeasureMix<-BusMeasuresGroup %>% group_by(date) %>% summarise(Cust=sum(sumsave[MeasureGroup=="Custom"]),Light=sum(sumsave[MeasureGroup=="Lighting"]),Other=sum(sumsave[MeasureGroup=="Other"])) %>% mutate(CustSum=cumsum(Cust),LightSum=cumsum(Light),OtherSum=cumsum(Other),Total=CustSum+LightSum+OtherSum,CustMix=CustSum/Total,LightMix=LightSum/Total,OtherMix=OtherSum/Total) %>% select(c(date,Custom=CustMix,Lighting=LightMix,Other=OtherMix)) %>% melt(id="date")
+
+ggplot(MeasureMix)+
+  geom_line(aes(x=as.Date(date),y=value,color=variable))+
+  labs(x="Date",y="Mix of Measures",color="MeasureGroup")+
+  ggtitle("Mix of Measures over Time by Type")
+```
