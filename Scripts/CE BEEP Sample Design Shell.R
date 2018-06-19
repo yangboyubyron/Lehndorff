@@ -1,5 +1,6 @@
 # Consumers Energy BEEP Sample Design Task -- 2018 data
 # The purpose of this task is to simulate the creation of a sample design for Consumers Energy BEEP PY2018.
+# Ask as many questions as needed.
 
 ##Step 1 of this task is to assign measures to measure groups and then projects to measure groups based on the measures in the project.
 
@@ -17,5 +18,9 @@
 # if a project has any Smart Buildings measures (with positive kWh) the project is assigned to Smart Buildings. Else Custom, then Compressed Air, Motors & Drives, Other Prescriptive, Undefined Lighting, Other Lighting, T8/T5 Lighting, and LED Lighting
 
 # The final product for Step 1 is a data frame containing the project ID (ProjectID), the group the project has been asigned to, and the TOTAL savings of the project.  
+
+# At this point, the "Client" may have some changes they would like you to make.
+
+#### STOP HERE FOR NOW ###
 
 ##Step 2 of this task is to create an optimize sample design using previously created code
