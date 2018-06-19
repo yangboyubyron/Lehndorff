@@ -1,3 +1,11 @@
+# READ ME
+# The purpose of this code is to provide functional examples of functions and code structures commonly used at Evergreen (at least by me, HL).
+# This version of the code has had all of the code removed so it can instead be used for learning R in an Evergreen specific setting.
+# Lines with a one comment (#) denote a data analysis task. Lines with two comments (##) denote my (HL) english language version of the R code (which has been deleted) that would accomplish the described analysis task.
+# Given that this code has been repurposed, the english language lines may not be very useful or may only be useful after the code has been writen. Again, the english language lines describe the code that I (HL) wrote to accomplish these analysis tasks.
+
+
+
 library(dplyr)
 library(ggplot2)
 
@@ -6,22 +14,23 @@ library(ggplot2)
 SPSmeasures<-read.csv("/volumes/Projects/457001 - New Mexico/Data/SPS/2017 Final Salesforce Data/2017 NM DSM Evals - Measure Level Data.csv",stringsAsFactors = FALSE)
 SPScontact<-read.csv("/volumes/Projects/457001 - New Mexico/Data/SPS/Business Comprehensive/Business Comprehensive - Contact Data.csv",stringsAsFactors = FALSE)
 
-#clean up column names by removing prefix "Opportunity"
-## the column names of SPSmeasures is the colnames of SPSmeasures where nothing ("") has been substituted for (the first instence of exactly) "Opportunity.."
-
+#clean up column names by removing prefix "Opportunity.."
+## the column names of SPSmeasures is a substitution of (the first instence of exactly) "Opportunity.." for nothing ("") on the column names of SPSmeasures
 
 # look at only residential measures (subset()) -- subset data to where the segment variable is Business
-## BusMeasures is a subset of SPSmeasures where Integration.Program.Segment equals Business
+## BusMeasures is a subset of SPSmeasures where Integration.Program.Segment equals "Business"
 
 
 # aggregate the measure-level data by measure type to find the count of each measure, the gross savings, and the number of unique accounts that had that measure type.
-## MeasureSavings is BusMeasures then grouped by Product then aggregated such that n is the number of instances (rows) of the group, kWh is sum of Customer.kWh of the group ignoring NAs, and numaccounts is the count of unique Account.Number of the group
+## MeasureSavings is BusMeasures then grouped by Product then summarised (aggregated) such that n equals the number of instances (rows) of the group, kWh equals the sum of Customer.kWh of the group ignoring NAs, and numaccounts equals the count of unique Account.Number of the group
 
 
 # use a for loop to create a measure type group (custom, lighting, other) starting with a default of NA
 ##BusMeasures MeasureGroup is NA
 ## for i going from 1 to the number of rows in BusMeasures, if Product at row i contains "custom" (ignoring case),MeasureGroup at row i is "Custom"...
 
+# run a simple frequency of to check the results
+## 
 
 # extract application date from the measure data
 ## BusMeasure date is Application.Recieved.Date as a date formatted as month (mm)/day (dd)/year (yyyy)
@@ -29,9 +38,6 @@ SPScontact<-read.csv("/volumes/Projects/457001 - New Mexico/Data/SPS/Business Co
 
 # aggregate measure data to project/account level
 ## BusProjects is BusMeasures grouped by Account.Number then aggregated so that CustSave is the sum of Customer.kWh where MeasureGroup is "Custom"...
-
-
-# run a simple frequency of to check the results
 
 
 # clean up contact data to only 1 usable contact per account
