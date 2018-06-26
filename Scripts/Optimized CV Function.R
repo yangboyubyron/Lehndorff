@@ -1,9 +1,29 @@
 
 TheFrame <- read.csv("~/Desktop/Old Sample Frames/SampleFrame_12062016.csv", stringsAsFactors = FALSE)
+TheFrame$PrimaryMeasure[TheFrame$CProjectID=="157933"]<-"LEED"
 
 OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Evaluate=TRUE,Progress=TRUE){
   require(dplyr,quietly = TRUE)
   
+  r<-proc.time()
+  if(class(n_strata)!="numeric"|class(n_strata)!="numeric"|n_strata<1|n_strata%%1!=0){
+    warning("Invalid n_strata value. Number of strata should be an integer between 1 and 6.")
+    return(NULL)
+  }else if(n_strata>6){
+    message("Maximum number of strata per group is 6.")
+    n_strata<-6
+  }
+  if(class(FloatTolerance)!="logical"|class(SmartTolerance)!="logical"|class(OptimalOption)!="logical"|class(Optimize)!="logical"|class(Evaluate)!="logical"|class(Progress)!="logical"){
+    warning("FloatTolerance, SmartTolerance, OptimalOption, Optimize, Evaluate, and Progress should be logical inputs. Check these inputs.")
+    return(NULL)
+  }
+  if(tolerance>.2){
+    message("Tolerance input value is high. Optimization may take a long time to process.")
+  }else if (tolerance<0|class(tolerance)!="numeric"){
+    warning("Invalid tolerance value. Tolerance should be a positive value between 0 and 1.")
+    return(NULL)
+  }
+
   strataoutfun<-function(){
   counts<-as.data.frame.table(table(Dataopt$Work))
   out<-list(EU=Measure,X1=counts$Freq[counts$Var1==1],X2=sum(counts$Freq[counts$Var1==2]),X3=sum(counts$Freq[counts$Var1==3]),X4=sum(counts$Freq[counts$Var1==4]),X5=sum(counts$Freq[counts$Var1==5]),X6=sum(counts$Freq[counts$Var1==6]),CV=subsetsx(),strata=max(Dataopt$Work),ProbTol=ProbTolfun(),CertTol=CertTolfun())
@@ -52,8 +72,6 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
   ProbTolfun<-function(){
     tol1<-c(sum(Dataopt$Percent[Dataopt$Work==min(2,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(3,max(Dataopt$Work))]),
       sum(Dataopt$Percent[Dataopt$Work==min(4,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(5,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(6,max(Dataopt$Work))]))
-    # tol2<-max(abs(1/max(Dataopt$Work)-tol1))
-    # tol2<-(range(tol1)[2]-range(tol1)[1])
     tol2<-max(abs(tol1-sum(tol1[1:(max(Dataopt$Work)-1)])/(max(Dataopt$Work)-1)))
     return(tol2)
   }
@@ -64,16 +82,16 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
   if(class(optdata$SizeVar)!="numeric"&class(optdata$SizeVar)!="integer"){
     warning("Size variable is not numeric. Use a different variable or convert SizeVar to numeric.")
     return(NULL)
-    }
+  }
+  if(n_distinct(optdata$Identifier)!=nrow(optdata)){
+    warning("Not all values of the Identifier variable are unique. Does the input file need to be further aggregated?")
+    return(NULL)
+  }
   
   SmartAdjs<-optdata%>%group_by(Group)%>%summarise(sd=sd(SizeVar/sum(SizeVar)),n=n(),rat=n/sd)%>%mutate(adj=1.3/(1+exp(1)^(.5*(log(rat)-11))),newTol=adj*tolerance)
+  SmartAdjs$newTol[is.na(SmartAdjs$newTol)]<-1
   
-  eval<-NULL
-  r<-proc.time()
-  ProbTolReset<-tolerance
-  CertTolReset<-tolerance
-  
-  if(min(which_groups=="All")==1){
+  if(min(which_groups=="All")==1|is.null(which_groups)){
     groups=unique(optdata$Group)
   } else if(min(gsub("!","",which_groups)%in%unique(optdata$Group))==0){
       warning(paste("Not all groups recognized. Check 'which_groups'.","Group options are ",paste(unique(optdata$Group),collapse = ", "),sep = ""))
@@ -103,6 +121,10 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
     return(Options)
   }
 
+  eval<-NULL
+  ProbTolReset<-tolerance
+  CertTolReset<-tolerance
+  
   for (h in groups){
     ProbTol<-ProbTolReset
     CertTol<-CertTolReset
@@ -222,7 +244,7 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
   exp<-paste(sort(rep(groups,times=n_strata)),1:n_strata,sep="-")
   act<-paste(OptionsImp$EU,OptionsImp$strata,sep="-")
   if(sum(!exp%in%act)>0){
-    message(paste("The following strata could not be run:",paste(exp[!exp%in%act],collapse = ", "),". Increase tolerance to make these strata available."))
+    message(paste("The following strata could not be run:",paste(exp[!exp%in%act],collapse = ", "),". Either there is not enough projects for these strata or tolerance needs to be increased to make these strata available."))
   } else {
     message("All expected strata were run.")
   }
@@ -295,7 +317,7 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("All"),n_strata=5,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = "HVAC",n_strata=4,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE)
 
 SomeReOpts<-ReOptimize(confidence = 1.284,precision = .2)
 
