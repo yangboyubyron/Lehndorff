@@ -144,14 +144,28 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
       if(FloatTolerance==TRUE&max(Dataopt$Percent)-1/n>CertTolReset){
         CertTol<-max(Dataopt$Percent)-1/n
       }
-      if(Progress){print(paste(Measure,n,sep = "-"))}
+      if(Progress){
+        # if(n>4|n==1){print("",quote = FALSE)}
+        print(paste(Measure,n,sep = "-"),quote=FALSE)
+      }
+      
       Dataopt$Work<-n
       if (n>1){
         start1<-min(Dataopt$row[Dataopt$Percentile>1/n-CertTol])
+        end1<-max(Dataopt$row[Dataopt$Percentile<=1/n+CertTol])+1
         Dataopt$Work[1:start1]<-1
         sum1<-sum(Dataopt$Percent[Dataopt$Work==1])
-      }else{start1<-1}
+      }else{
+        start1<-1
+        end1<-1
+      }
+      
+      prog<-progress_estimated(length(start1:end1))
+      
       for (a in start1:(Length-n+1)){
+        if(Progress&n>3){
+          prog$tick()$print()
+        }
         Dataopt$Work[a]<-1
         sum1<-sum(Dataopt$Percent[Dataopt$Work==1])
         Dataopt$Work[Dataopt$Work>1]<-n
@@ -231,7 +245,9 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
           }
         }
       }
-      # eval<-bind_rows(eval,list(EU=Measure,X1=0,X2=0,X3=0,X4=0,X5=0,X6=0,CV=1000,strata=max(Dataopt$Work),ProbTol=minProbTol,CertTol=NA))
+      if(Progress&n>3&end1-start1>1){
+        print("",quote = FALSE)
+      }
     }
   }
   y<-proc.time()
@@ -317,20 +333,20 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = "HVAC",n_strata=4,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherElectric","HVAC","SmartBuildings","HVAC","SmartBuildings","CustomElectric"),n_strata=5,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE)
 
 SomeReOpts<-ReOptimize(confidence = 1.284,precision = .2)
 
-SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(4,8,12,16,20,22,26))
+SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(4,8,12,16,21,25,29,30,35))
 
-SomeSampleDesign<-DesignSample(PrepedDesign = SomeSelectedOptions,SummaryLevel = "project")
+SomeSampleDesign<-DesignSample(PrepedDesign = SomeSelectedOptions,SummaryLevel = "strata")
 
 LameOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("All"),n_strata=5,confidence = 1.284,precision = .2,Optimize = FALSE)
 
 Comp.05<-left_join(LameOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=paste(EU,strata,sep="-")),SomeOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=paste(EU,strata,sep="-")),by="merge",suffix=c(".LAME",".OPT")) %>% mutate(diff=finsamp.OPT-finsamp.LAME)
 
 
-
+# load("~/Desktop/Function_Test_Data.RData")
 
 
 
