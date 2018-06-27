@@ -145,9 +145,10 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
       minProbTol<-1
       if(FloatTolerance==TRUE&max(Dataopt$Percent)-1/n>CertTolReset){
         CertTol<-max(Dataopt$Percent)-1/n
+      }else if (FloatTolerance==FALSE&max(Dataopt$Percent)-1/n>CertTolReset){
+        break
       }
       if(Progress){
-        # if(n>4|n==1){print("",quote = FALSE)}
         print(paste(Measure,n,sep = "-"),quote=FALSE)
       }
       
@@ -167,6 +168,9 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
       for (a in start1:(Length-n+1)){
         if(Progress&n>3){
           prog$tick()$print()
+        }
+        if(Progress&n>3&prog$i==length(start1:end1)){
+          print("",quote = FALSE)
         }
         Dataopt$Work[a]<-1
         sum1<-sum(Dataopt$Percent[Dataopt$Work==1])
@@ -247,9 +251,9 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
           }
         }
       }
-      if(Progress&n>3&end1-start1>1){
-        print("",quote = FALSE)
-      }
+      # if(Progress&n>3&end1-start1>1){
+      #   print("",quote = FALSE)
+      # }
     }
   }
   y<-proc.time()
@@ -335,7 +339,7 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherElectric","HVAC","SmartBuildings","HVAC","SmartBuildings","CustomElectric"),n_strata=5,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherLighting","SmartBuildings"),n_strata=4,tolerance=.04,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=FALSE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
 
 SomeReOpts<-ReOptimize(confidence = 1.284,precision = .2)
 
@@ -350,66 +354,20 @@ Comp.05<-left_join(LameOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=pa
 
 # load("~/Desktop/Function_Test_Data.RData")
 
+combs<-as.data.frame(permutations(2,5,repeats.allowed = TRUE))
+combs[combs==2]<-0
+combs$time<-100
 
-
-
-
-
-###################################
-
-for (z in 1:1){
-  strataoutfun<-function(){
-  counts<-as.data.frame.table(table(Dataopt$Work))
-  out<-list(EU=Measure,X1=counts$Freq[counts$Var1==1],X2=sum(counts$Freq[counts$Var1==2]),X3=sum(counts$Freq[counts$Var1==3]),X4=sum(counts$Freq[counts$Var1==4]),X5=sum(counts$Freq[counts$Var1==5]),X6=sum(counts$Freq[counts$Var1==6]),CV=subsetsx(),strata=max(Dataopt$Work),ProbTol=ProbTolfun(),CertTol=CertTolfun())
-  return(out)
+for(i in 1:nrow(combs)){
+  print(i)
+  r<-proc.time()
+  A<-as.logical(combs$V1[i])
+  B<-as.logical(combs$V2[i])
+  C<-as.logical(combs$V3[i])
+  D<-as.logical(combs$V4[i])
+  E<-as.logical(combs$V5[i])
+  out<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("!LED"),n_strata=5,tolerance=.03,confidence = 1.645,precision = .1,Progress = A,FloatTolerance=B,SmartTolerance=C,OptimalOption=D,Optimize=E)
+  t<-proc.time()
+  combs$time[i]<-(t-r)[[3]]
 }
-subsetsx<-function(data=Dataopt, strata="Work"){
-  str1<-data$SizeVar[data[[strata]]==1]
-  str2<-data$SizeVar[data[[strata]]==2]
-  str3<-data$SizeVar[data[[strata]]==3]
-  str4<-data$SizeVar[data[[strata]]==4]
-  str5<-data$SizeVar[data[[strata]]==5]
-  str6<-data$SizeVar[data[[strata]]==6]
-  
-  SD1<-max(sd(str1), 0, na.rm=TRUE)
-  SD2<-max(sd(str2), 0, na.rm=TRUE)
-  SD3<-max(sd(str3), 0, na.rm=TRUE)
-  SD4<-max(sd(str4), 0, na.rm=TRUE)
-  SD5<-max(sd(str5), 0, na.rm=TRUE)
-  SD6<-max(sd(str6), 0, na.rm=TRUE)
-  
-  TotalCV<-(
-    (SD1/max(mean(str1), 1, na.rm = TRUE))*sum(str1)+ 
-      (SD2/max(mean(str2), 1, na.rm = TRUE))*sum(str2)+ 
-      (SD3/max(mean(str3), 1, na.rm = TRUE))*sum(str3)+
-      (SD4/max(mean(str4), 1, na.rm = TRUE))*sum(str4)+
-      (SD5/max(mean(str5), 1, na.rm = TRUE))*sum(str5)+
-      (SD6/max(mean(str6), 1, na.rm = TRUE))*sum(str6)
-  )/sum(data$SizeVar)
-  return(TotalCV)
-}
-InfSamp<-function(Critical,Precision,CV){
-  round((Critical*CV/Precision)^2,0)
-}
-FinSamp<-function(InfSamp,Total){
-  ceiling(as.numeric(InfSamp)/(1+as.numeric(InfSamp)/sum(as.numeric(Total))))
-}
-CertTolfun<-function(){
-  tol<-abs(1/max(Dataopt$Work)-sum(Dataopt$Percent[Dataopt$Work==1]))
-  return(tol)
-}
-ProbTolfun<-function(){
-  tol1<-c(sum(Dataopt$Percent[Dataopt$Work==min(2,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(3,max(Dataopt$Work))]),
-    sum(Dataopt$Percent[Dataopt$Work==min(4,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(5,max(Dataopt$Work))]),sum(Dataopt$Percent[Dataopt$Work==min(6,max(Dataopt$Work))]))
-  # tol2<-max(abs(1/max(Dataopt$Work)-tol1))
-  # tol2<-(range(tol1)[2]-range(tol1)[1])
-  tol2<-max(abs(tol1-sum(tol1[1:(max(Dataopt$Work)-1)])/(max(Dataopt$Work)-1)))
-  return(tol2)
-}
-cleanup<-function(){
-  keep<-c("SmartAdjs","eval","Data","DataIn","OptionsImp","strataoutfun","subsetsx","InfSamp","FinSamp","CertTolfun","ProbTolfun","cleanup")
-  rm(list=ls()[!ls()%in%keep])
-}
-}
-
 
