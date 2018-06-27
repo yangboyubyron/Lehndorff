@@ -2,8 +2,10 @@
 TheFrame <- read.csv("~/Desktop/Old Sample Frames/SampleFrame_12062016.csv", stringsAsFactors = FALSE)
 TheFrame$PrimaryMeasure[TheFrame$CProjectID=="157933"]<-"LEED"
 
-OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Evaluate=TRUE,Progress=TRUE){
+OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Progress=TRUE){
   require(dplyr,quietly = TRUE)
+  
+  Evaluate<-TRUE
   
   r<-proc.time()
   if(class(n_strata)!="numeric"|class(n_strata)!="numeric"|n_strata<1|n_strata%%1!=0){
@@ -333,7 +335,7 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherElectric","HVAC","SmartBuildings","HVAC","SmartBuildings","CustomElectric"),n_strata=5,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherElectric","HVAC","SmartBuildings","HVAC","SmartBuildings","CustomElectric"),n_strata=5,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
 
 SomeReOpts<-ReOptimize(confidence = 1.284,precision = .2)
 
