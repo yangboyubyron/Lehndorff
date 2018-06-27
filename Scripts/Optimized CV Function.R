@@ -28,7 +28,7 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
 
   strataoutfun<-function(){
   counts<-as.data.frame.table(table(Dataopt$Work))
-  out<-list(EU=Measure,X1=counts$Freq[counts$Var1==1],X2=sum(counts$Freq[counts$Var1==2]),X3=sum(counts$Freq[counts$Var1==3]),X4=sum(counts$Freq[counts$Var1==4]),X5=sum(counts$Freq[counts$Var1==5]),X6=sum(counts$Freq[counts$Var1==6]),CV=subsetsx(),strata=max(Dataopt$Work),ProbTol=ProbTolfun(),CertTol=CertTolfun())
+  out<-list(group=Measure,X1=counts$Freq[counts$Var1==1],X2=sum(counts$Freq[counts$Var1==2]),X3=sum(counts$Freq[counts$Var1==3]),X4=sum(counts$Freq[counts$Var1==4]),X5=sum(counts$Freq[counts$Var1==5]),X6=sum(counts$Freq[counts$Var1==6]),CV=subsetsx(),strata=max(Dataopt$Work),ProbTol=ProbTolfun(),CertTol=CertTolfun())
   return(out)
   }
   
@@ -109,12 +109,12 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
     for (h in 1:n_strata){
       notopt<-optdata %>% filter(Group%in%groups) %>% group_by(Group) %>% arrange(-SizeVar) %>% mutate(Percent=SizeVar/sum(SizeVar),Percentile=cumsum(Percent)) %>% arrange(Group) %>% ungroup() %>% mutate(Work=ceiling(Percentile/(1/h)))
       notopt$Work[notopt$Percent>1/h]<-1
-      notoptout<-notopt %>% group_by(EU=Group) %>% summarise(X1=sum(Work==1),X2=sum(Work==2),X3=sum(Work==3),X4=sum(Work==4),X5=sum(Work==5),X6=sum(Work==6),CV=subsetsx(data = subset(notopt,Group==unique(EU))),strata=max(Work),Tol="Not applicable",infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = (X1+X2+X3+X4+X5+X6)))
+      notoptout<-notopt %>% group_by(group=Group) %>% summarise(X1=sum(Work==1),X2=sum(Work==2),X3=sum(Work==3),X4=sum(Work==4),X5=sum(Work==5),X6=sum(Work==6),CV=subsetsx(data = subset(notopt,Group==unique(group))),strata=max(Work),Tol="Not applicable",infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = (X1+X2+X3+X4+X5+X6)))
       Options<-bind_rows(Options,notoptout)
     }
-    Options<-Options %>% arrange(EU) %>% mutate(selection=1:n())
+    Options<-Options %>% arrange(group) %>% mutate(selection=1:n())
     exp<-paste(sort(rep(groups,times=n_strata)),1:n_strata,sep="-")
-    act<-paste(Options$EU,Options$strata,sep="-")
+    act<-paste(Options$group,Options$strata,sep="-")
     if(sum(!exp%in%act)>0){
       message(paste("The following strata could not be run:",paste(exp[!exp%in%act],collapse = ", "),". Increase tolerance to make these strata available."))
     } else {
@@ -251,20 +251,17 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
           }
         }
       }
-      # if(Progress&n>3&end1-start1>1){
-      #   print("",quote = FALSE)
-      # }
     }
   }
   y<-proc.time()
   print(y-r)
   if (OptimalOption){
-    OptionsImp<-eval%>%group_by(EU)%>%mutate(EUN=max(X1),infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = unique(EUN)))%>%group_by(EU,strata)%>%arrange(finsamp,ProbTol,CV)%>%ungroup()%>%mutate(row=1:nrow(eval))%>%group_by(EU,strata)%>%mutate(n=n(),min=min(row))%>%filter(row==min(row))%>%arrange(EU,strata)%>%select(c(-EUN,-row,-min))
+    OptionsImp<-eval%>%group_by(group)%>%mutate(Group_n=max(X1),infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = unique(Group_n)))%>%group_by(group,strata)%>%arrange(finsamp,ProbTol,CV)%>%ungroup()%>%mutate(row=1:nrow(eval))%>%group_by(group,strata)%>%mutate(n=n(),min=min(row))%>%filter(row==min(row))%>%arrange(group,strata)%>%select(c(-n,-row,-min))
   }else{
-    OptionsImp<-eval%>%group_by(EU,strata)%>%mutate(n=n(),min=min(CV))%>%filter(CV==min)%>%mutate(infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = length(Data$Group[Data$Group==unique(EU)])))%>%unique()
+    OptionsImp<-eval%>%group_by(group,strata)%>%mutate(Group_n=n(),min=min(CV))%>%filter(CV==min)%>%mutate(infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = length(Data$Group[Data$Group==unique(group)])))%>%unique()
   }
   exp<-paste(sort(rep(groups,times=n_strata)),1:n_strata,sep="-")
-  act<-paste(OptionsImp$EU,OptionsImp$strata,sep="-")
+  act<-paste(OptionsImp$group,OptionsImp$strata,sep="-")
   if(sum(!exp%in%act)>0){
     message(paste("The following strata could not be run:",paste(exp[!exp%in%act],collapse = ", "),". Either there is not enough projects for these strata or tolerance needs to be increased to make these strata available."))
   } else {
@@ -287,9 +284,9 @@ ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence,precisio
   eval<-StrataData
   
   if (OptimalOption){
-    OptionsImp<-eval%>%group_by(EU)%>%mutate(EUN=max(X1),infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = unique(EUN)))%>%group_by(EU,strata)%>%arrange(finsamp,ProbTol,CV)%>%ungroup()%>%mutate(row=1:nrow(eval))%>%group_by(EU,strata)%>%mutate(n=n(),min=min(row))%>%filter(row==min(row))%>%arrange(EU,strata)%>%select(c(-EUN,-row,-min))
+    OptionsImp<-eval%>%group_by(group)%>%mutate(Group_n=max(X1),infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = unique(Group_n)))%>%group_by(group,strata)%>%arrange(finsamp,ProbTol,CV)%>%ungroup()%>%mutate(row=1:nrow(eval))%>%group_by(group,strata)%>%mutate(n=n(),min=min(row))%>%filter(row==min(row))%>%arrange(group,strata)%>%select(c(-Group_n,-row,-min))
   }else{
-    OptionsImp<-eval%>%group_by(EU,strata)%>%mutate(n=n(),min=min(CV))%>%filter(CV==min)%>%mutate(infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = length(Data$Group[Data$Group==unique(EU)])))%>%unique()
+    OptionsImp<-eval%>%group_by(group,strata)%>%mutate(n=n(),min=min(CV))%>%filter(CV==min)%>%mutate(infsamp=InfSamp(Critical=confidence,Precision = precision,CV=CV),finsamp=FinSamp(InfSamp = infsamp,Total = length(Data$Group[Data$Group==unique(group)])))%>%unique()
   }
   OptionsImp$selection<-1:nrow(OptionsImp)
   return(OptionsImp)
@@ -305,11 +302,14 @@ PrepDesign<-function(DesignOptions,Selection,AtLeast2=TRUE){
 DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
   Data<-DataForOpt
   Results<-PrepedDesign
+  if(n_distinct(Results$group)!=nrow(Results)){
+    message("Enduses in PrepedDesign are not unique. Unexpected results may occur.")
+  }
   Design<-NULL
   DataOut<-NULL
   for (i in 1:nrow(Results)){
     sel<-Results[i,]
-    Dataopt<-subset(Data,Group==sel$EU)%>%arrange(-SizeVar)
+    Dataopt<-subset(Data,Group==sel$group)%>%arrange(-SizeVar)
     Dataopt$Work<-c(rep(1,sel$X1),rep(2,sel$X2),rep(3,sel$X3),rep(4,sel$X4),rep(5,sel$X5),rep(6,sel$X6))
     DataOut<-bind_rows(DataOut,Dataopt)
     DataoptOut<-Dataopt%>%group_by(Group,Work)%>%summarise(n=n(),mean=mean(SizeVar),sum=sum(SizeVar),sd=sd(SizeVar),min=min(SizeVar),max=max(SizeVar))
@@ -325,25 +325,26 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
     }
     Design<-bind_rows(Design,DataoptOut)
   }
-  if(!SummaryLevel%in%c("group","strata","project")){
-    warning("Unknown summary level. Select 'program','group', or 'project'")
-  } else if(sum(SummaryLevel%in%c("group","strata","project"))>1){
-    warning("Too many summary levels. Select one of 'program','group', or 'project'")
+  if(!SummaryLevel%in%c("group","strata","identifier")){
+    warning("Unknown summary level. Select 'strata','group', or 'identifier'")
+  } else if(sum(SummaryLevel%in%c("group","strata","identifier"))>1){
+    warning("Too many summary levels. Select one of 'strata','group', or 'identifier'")
   }else if(SummaryLevel=="strata"){
       return(Design)
   }else if(SummaryLevel=="group"){
       return(DataOut %>% group_by(Group)%>%summarise(n=n(),mean=mean(SizeVar),sum=sum(SizeVar),sd=sd(SizeVar),min=min(SizeVar),max=max(SizeVar),sample=sum(Design$sample[Design$Group==unique(Group)])))
-  }else if(SummaryLevel=="project"){
+  }else if(SummaryLevel=="identifier"){
       return(DataOut)
-    }
+  }
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("OtherLighting","SmartBuildings"),n_strata=4,tolerance=.04,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=FALSE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("HVAC","T8","HVAC"),n_strata=4,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
 
-SomeReOpts<-ReOptimize(confidence = 1.284,precision = .2)
+SomeReOpts<-ReOptimize(StrataData=AllStrata,OptimalOption=TRUE,confidence = 1.284,precision = .2)
 
 SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(4,8,12,16,21,25,29,30,35))
+SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(3,4,8))
 
 SomeSampleDesign<-DesignSample(PrepedDesign = SomeSelectedOptions,SummaryLevel = "strata")
 
@@ -354,6 +355,7 @@ Comp.05<-left_join(LameOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=pa
 
 # load("~/Desktop/Function_Test_Data.RData")
 
+library(gtools)
 combs<-as.data.frame(permutations(2,5,repeats.allowed = TRUE))
 combs[combs==2]<-0
 combs$time<-100
