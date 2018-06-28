@@ -142,6 +142,7 @@ RTUout$contact_name[RTUout$business_name=="THOMAS W NEDELSKY"]<-.simpleCap("THOM
 
 table(paste(RTUout$CZ,RTUout$Channel,sep=""))
 
+# write.csv(RTUout %>% filter(CZ==13&(Channel=="A"|Channel=="B")) %>% data.frame(),"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE_13A13B_0628.csv",row.names = FALSE)
 # write.csv(RTUout,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE2_0504.csv",row.names = FALSE)
 
 ### Remaining sites
