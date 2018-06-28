@@ -25,7 +25,11 @@
 #' @export
 #' @import dplyr
 #'
-#' @examples NULL
+#' @examples 
+#' DataforOpt <- mtcars
+#' DataforOpt$ids<-row.names(DataforOpt)
+#' OptimizedFrame<-OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",which_groups=c(8,6),n_strata=3,tolerance=.05,confidence=1.645,precision=.1)
+#' 
 OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Progress=TRUE){
   require(dplyr,quietly = TRUE)
   
