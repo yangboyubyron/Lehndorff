@@ -1,15 +1,12 @@
 
-
-
-
 #' Optimization of stratified sample design
 #'
 #' @param Data 
 #' @param Identifier Character string which identifies column where individuals are identified.
 #' @param SizeVar Character string which identifies numeric column that is being stratified.
 #' @param Group Character string which identifies column where group membership is identified.
+#' @param n_strata Integer from 1 to 6 indicating the maximum number of strata that should be attempted. More strata = more processing time.
 #' @param which_groups Character vector which identfies which subset of Group should or should not be included. Use "All" for all groups and "!" to remove groups.
-#' @param n_strata Integer from 1 to 6 indicating the maximum number of strata that should be attempted. More strata = more processing time. 
 #' @param tolerance Numeric value between 0 and 1 indicating range of acceptable variation between strata. A value of .05 would indicate that the total size of strata of a n strata optimization could vary between 1/n +- .05.
 #' @param FloatTolerance Logical indicating if individuals with very high SizeVar values can be exempted from tolerance requirement. 
 #' @param SmartTolerance Logical indicating if tolerance can be modifier based on Group population and standard deviation. Allows very large groups to run faster.
@@ -19,18 +16,27 @@
 #' @param Optimize Logical indicating if sample design should be optimized. FALSE produced non-optimized sample design.
 #' @param Progress Logical indicating if function progress should be displayed in the console. Helpful for tracking progress of large groups.
 #'
-#' @return Data frame containing optimal strata based on criteria. Also outputs data used for subsequent steps to enviroment.
+#' @return Data frame containing optimal strata based on criteria. Also outputs data used for subsequent steps to enviroment: AllStrata = all strata options pre optimization, OptData = selected data for optimization.
 #' @seealso ReOptimize, PrepDesign, DesignSample
 #' 
 #' @export
 #' @import dplyr
 #'
 #' @examples 
+#' # Optimized sample for mtcars data grouped by cyl stratified by disp for 6 and 8 cyl cars.
 #' DataforOpt <- mtcars
-#' DataforOpt$ids<-row.names(DataforOpt)
-#' OptimizedFrame<-OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",which_groups=c(8,6),n_strata=3,tolerance=.05,confidence=1.645,precision=.1)
+#' DataforOpt$ids <- row.names(DataforOpt)
+#' OptimizedCars <- OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",n_strata=4,which_groups=c(8,6),tolerance=.05,confidence=1.645,precision=.1)
 #' 
-OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Progress=TRUE){
+#' # Recalculate options at 80/20 level
+#' ReOptimizedCars <- ReOptimize(confidence=1.284,precision=.2)
+#' 
+#' # Select strata to use for sample design
+#' SelectedCarsStrata <- PrepDesign(DesignOptions=ReOptimizedCars, Selection=c(2,7))
+#' 
+#' # Design sample for mtcars
+#' CarsSampleDesign <- DesignSample(PrepedDesign=SelectedCarsStrata)
+OptSampleDesign<-function(Data,Identifier,SizeVar,Group,n_strata,which_groups="All",tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence=1.645,precision=.1,Optimize=TRUE,Progress=TRUE){
   require(dplyr,quietly = TRUE)
   
   Evaluate<-TRUE
@@ -301,7 +307,36 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
 }
 
 
-ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence,precision){
+#' Reoptimze stratification options for different confidence/precision levels
+#'
+#' @param StrataData List of all possible strata options to be reoptimized. Should be set to AllStrata -- one of the additional outputs from OptSampleDesign.
+#' @param OptimalOption Logical indicating if for the sample sample size the lowest tolerance option should be selected. Else the lowest CV option will be selected.
+#' @param confidence Logical indicating if sample design should be optimized. FALSE produced non-optimized sample design.
+#' @param precision Logical indicating if function progress should be displayed in the console. Helpful for tracking progress of large groups.
+#'
+#' @return Data frame containing re-optimized strata based on criteria.
+#' @seealso OptSampleDesign, PrepDesign, DesignSample
+#' 
+#' @export 
+#' @import dplyr
+#'
+#' @examples
+#' # Optimized sample for mtcars data grouped by cyl stratified by disp for 6 and 8 cyl cars.
+#' DataforOpt <- mtcars
+#' DataforOpt$ids <- row.names(DataforOpt)
+#' OptimizedCars <- OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",n_strata=4,which_groups=c(8,6),tolerance=.05,confidence=1.645,precision=.1)
+#' 
+#' # Recalculate options at 80/20 level
+#' ReOptimizedCars <- ReOptimize(confidence=1.284,precision=.2)
+#' 
+#' # Select strata to use for sample design
+#' SelectedCarsStrata <- PrepDesign(DesignOptions=ReOptimizedCars, Selection=c(2,7))
+#' 
+#' # Design sample for mtcars
+#' CarsSampleDesign <- DesignSample(PrepedDesign=SelectedCarsStrata)
+ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence=1.645,precision=.1){
+  require(dplyr,quietly = TRUE)
+  
   InfSamp<-function(Critical,Precision,CV){
     round((Critical*CV/Precision)^2,0)
   }
@@ -322,6 +357,32 @@ ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence,precisio
 }
 
 
+#' Prepare data for sample design
+#'
+#' @param DesignOptions Data frame containing strata options as defined by OptSampleDesign or ReOptimize.
+#' @param Selection Numeric vector indicating which strata definitions (rows of DesignOptions) should be used for sample design.
+#' @param AtLeast2 Logical indicating if at least two sample points should be in each strata (recommended). 
+#'
+#' @return Selected rows from DesignOptions with sample size that will be used for sample design.
+#' @seealso OptSampleDesign, ReOptimize, DesignSample
+#' 
+#' @export
+#' @import dplyr
+#'
+#' @examples
+#' # Optimized sample for mtcars data grouped by cyl stratified by disp for 6 and 8 cyl cars.
+#' DataforOpt <- mtcars
+#' DataforOpt$ids <- row.names(DataforOpt)
+#' OptimizedCars <- OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",n_strata=4,which_groups=c(8,6),tolerance=.05,confidence=1.645,precision=.1)
+#' 
+#' # Recalculate options at 80/20 level
+#' ReOptimizedCars <- ReOptimize(confidence=1.284,precision=.2)
+#' 
+#' # Select strata to use for sample design
+#' SelectedCarsStrata <- PrepDesign(DesignOptions=ReOptimizedCars, Selection=c(2,7))
+#' 
+#' # Design sample for mtcars
+#' CarsSampleDesign <- DesignSample(PrepedDesign=SelectedCarsStrata)
 PrepDesign<-function(DesignOptions,Selection,AtLeast2=TRUE){
   results<-subset(DesignOptions,selection%in%Selection) %>% mutate(SampleSize=finsamp)
   if(AtLeast2){results$SampleSize[results$finsamp<2*results$strata]<-results$strata[results$finsamp<2*results$strata]*2}
@@ -330,7 +391,33 @@ PrepDesign<-function(DesignOptions,Selection,AtLeast2=TRUE){
 }
 
 
-DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
+#' Design sample based on optimzed stratification
+#'
+#' @param PrepedDesign Name of file with output from PrepedDesign function or similarly structure file.
+#' @param DataForOpt Data on which sample design is being performed. Should be set to OptData -- one of the additional outputs from OptSampleDesign.
+#' @param SummaryLevel Select one of three options. "group" summarizes sample design for each Group. "strata" summarizes sample design for each strata within each group. "identifier" returns strata assignment for each identifier.
+#'
+#' @return One of three representation of the completed sample design. 
+#' @seealso OptSampleDesign, ReOptimize, PrepDesign
+#' 
+#' @export
+#' @import dplyr
+#' 
+#' @examples 
+#' # Optimized sample for mtcars data grouped by cyl stratified by disp for 6 and 8 cyl cars.
+#' DataforOpt <- mtcars
+#' DataforOpt$ids <- row.names(DataforOpt)
+#' OptimizedCars <- OptSampleDesign(Data=DataforOpt,Identifier="ids",SizeVar="disp",Group="cyl",n_strata=4,which_groups=c(8,6),tolerance=.05,confidence=1.645,precision=.1)
+#' 
+#' # Recalculate options at 80/20 level
+#' ReOptimizedCars <- ReOptimize(confidence=1.284,precision=.2)
+#' 
+#' # Select strata to use for sample design
+#' SelectedCarsStrata <- PrepDesign(DesignOptions=ReOptimizedCars, Selection=c(2,7))
+#' 
+#' # Design sample for mtcars
+#' CarsSampleDesign <- DesignSample(PrepedDesign=SelectedCarsStrata)
+DesignSample<-function(PrepedDesign,DataForOpt=OptData,SummaryLevel="strata"){
   Data<-DataForOpt
   Results<-PrepedDesign
   if(n_distinct(Results$group)!=nrow(Results)){
