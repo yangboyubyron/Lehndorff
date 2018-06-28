@@ -12,7 +12,7 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
     warning("Invalid n_strata value. Number of strata should be an integer between 1 and 6.")
     return(NULL)
   }else if(n_strata>6){
-    message("Maximum number of strata per group is 6.")
+    message("Maximum number of strata per group is currently 6. Only 6 strata will be run.")
     n_strata<-6
   }
   if(class(FloatTolerance)!="logical"|class(SmartTolerance)!="logical"|class(OptimalOption)!="logical"|class(Optimize)!="logical"|class(Evaluate)!="logical"|class(Progress)!="logical"){
@@ -339,7 +339,7 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
 }
 
 
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("HVAC","T8","HVAC"),n_strata=4,tolerance=.05,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
+SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("CustomElectric","Motor"),n_strata=7,tolerance=.03,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
 
 SomeReOpts<-ReOptimize(StrataData=AllStrata,OptimalOption=TRUE,confidence = 1.284,precision = .2)
 
