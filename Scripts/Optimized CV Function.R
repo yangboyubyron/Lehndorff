@@ -1,7 +1,31 @@
 
-TheFrame <- read.csv("~/Desktop/Old Sample Frames/SampleFrame_12062016.csv", stringsAsFactors = FALSE)
-TheFrame$PrimaryMeasure[TheFrame$CProjectID=="157933"]<-"LEED"
 
+
+
+#' Optimization of stratified sample design
+#'
+#' @param Data 
+#' @param Identifier Character string which identifies column where individuals are identified.
+#' @param SizeVar Character string which identifies numeric column that is being stratified.
+#' @param Group Character string which identifies column where group membership is identified.
+#' @param which_groups Character vector which identfies which subset of Group should or should not be included. Use "All" for all groups and "!" to remove groups.
+#' @param n_strata Integer from 1 to 6 indicating the maximum number of strata that should be attempted. More strata = more processing time. 
+#' @param tolerance Numeric value between 0 and 1 indicating range of acceptable variation between strata. A value of .05 would indicate that the total size of strata of a n strata optimization could vary between 1/n +- .05.
+#' @param FloatTolerance Logical indicating if individuals with very high SizeVar values can be exempted from tolerance requirement. 
+#' @param SmartTolerance Logical indicating if tolerance can be modifier based on Group population and standard deviation. Allows very large groups to run faster.
+#' @param OptimalOption Logical indicating if for the sample sample size the lowest tolerance option should be selected. Else the lowest CV option will be selected.
+#' @param confidence Numeric indicating z-score associated with desired confidence level (1.645 = 90%, 1.284 = 80%).
+#' @param precision Numeric from 0 to 1 indicating desired precision level.
+#' @param Optimize Logical indicating if sample design should be optimized. FALSE produced non-optimized sample design.
+#' @param Progress Logical indicating if function progress should be displayed in the console. Helpful for tracking progress of large groups.
+#'
+#' @return Data frame containing optimal strata based on criteria. Also outputs data used for subsequent steps to enviroment.
+#' @seealso ReOptimize, PrepDesign, DesignSample
+#' 
+#' @export
+#' @import dplyr
+#'
+#' @examples NULL
 OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_strata,tolerance=.05,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,confidence,precision,Optimize=TRUE,Progress=TRUE){
   require(dplyr,quietly = TRUE)
   
@@ -272,6 +296,7 @@ OptSampleDesign<-function(Data,Identifier,SizeVar,Group,which_groups="All",n_str
   return(OptionsImp)
 }
 
+
 ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence,precision){
   InfSamp<-function(Critical,Precision,CV){
     round((Critical*CV/Precision)^2,0)
@@ -292,12 +317,14 @@ ReOptimize<-function(StrataData=AllStrata,OptimalOption=TRUE,confidence,precisio
   return(OptionsImp)
 }
 
+
 PrepDesign<-function(DesignOptions,Selection,AtLeast2=TRUE){
   results<-subset(DesignOptions,selection%in%Selection) %>% mutate(SampleSize=finsamp)
   if(AtLeast2){results$SampleSize[results$finsamp<2*results$strata]<-results$strata[results$finsamp<2*results$strata]*2}
   results$SitesPerStrata<-results$SampleSize/results$strata
   return(results)
 }
+
 
 DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
   Data<-DataForOpt
@@ -338,38 +365,4 @@ DesignSample<-function(DataForOpt=OptData,PrepedDesign,SummaryLevel="strata"){
   }
 }
 
-
-SomeOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("CustomElectric","Motor"),n_strata=7,tolerance=.03,confidence = 1.645,precision = .1,Progress = TRUE,FloatTolerance=TRUE,SmartTolerance=TRUE,OptimalOption=TRUE,Optimize=TRUE)
-
-SomeReOpts<-ReOptimize(StrataData=AllStrata,OptimalOption=TRUE,confidence = 1.284,precision = .2)
-
-SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(4,8,12,16,21,25,29,30,35))
-SomeSelectedOptions<-PrepDesign(DesignOptions = SomeReOpts,Selection = c(3,4,8))
-
-SomeSampleDesign<-DesignSample(PrepedDesign = SomeSelectedOptions,SummaryLevel = "strata")
-
-LameOpts<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("All"),n_strata=5,confidence = 1.284,precision = .2,Optimize = FALSE)
-
-Comp.05<-left_join(LameOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=paste(EU,strata,sep="-")),SomeOpts %>% select(EU,strata,CV,finsamp) %>% mutate(merge=paste(EU,strata,sep="-")),by="merge",suffix=c(".LAME",".OPT")) %>% mutate(diff=finsamp.OPT-finsamp.LAME)
-
-
-# load("~/Desktop/Function_Test_Data.RData")
-
-library(gtools)
-combs<-as.data.frame(permutations(2,5,repeats.allowed = TRUE))
-combs[combs==2]<-0
-combs$time<-100
-
-for(i in 1:nrow(combs)){
-  print(i)
-  r<-proc.time()
-  A<-as.logical(combs$V1[i])
-  B<-as.logical(combs$V2[i])
-  C<-as.logical(combs$V3[i])
-  D<-as.logical(combs$V4[i])
-  E<-as.logical(combs$V5[i])
-  out<-OptSampleDesign(Data = TheFrame,Identifier = "CProjectID",SizeVar = "SumKWH",Group = "PrimaryMeasure",which_groups = c("!LED"),n_strata=5,tolerance=.03,confidence = 1.645,precision = .1,Progress = A,FloatTolerance=B,SmartTolerance=C,OptimalOption=D,Optimize=E)
-  t<-proc.time()
-  combs$time[i]<-(t-r)[[3]]
-}
 
