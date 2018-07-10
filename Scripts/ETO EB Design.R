@@ -1,6 +1,7 @@
 # ETO EB Sample Design
 library(xlsx)
 library(dplyr)
+library(lubridate)
 
 population<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Eligible Commercial Sites.csv",stringsAsFactors = FALSE)
 projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Projects.csv",stringsAsFactors = FALSE)
@@ -16,11 +17,42 @@ projects$trackval[projects$projecttrackdescription=="Existing Buildings - Standa
 projects$trackval[projects$projecttrackdescription=="Existing Buildings - Lighting"]<-5
 table(projects$trackval)
 
-projects$date<-as.Date(projects$maxrecognizeddate)
+projects$date<-as.Date(projects$installeddate)
+projects$date[is.na(projects$date)]<-as.Date(projects$maxrecognizeddate[is.na(projects$date)])
+projects$year<-year(projects$date)
 
-Parts<-projects %>% group_by(et_siteid) %>% summarise(ProgramTrack=min(trackval[as.Date(date)>="2017-01-01"]),Repeat=n_distinct(projectid))
-Parts<-projects %>% group_by(et_siteid) %>% summarise(ProgramTrack=min(trackval),Repeat=n_distinct(projectid))
+Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% summarise(n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE))
+Parts$segment<-paste(Parts$recent_group,"R",sep = "-")
+Parts$segment[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000]<-paste(Parts$past_group[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000],"P",sep="-")
 
-table(Parts$ProgramTrack,Parts$Repeat>1)
+Parts<-Parts %>% filter(segment!="Inf-P") %>% data.frame()
+table(Parts$segment)
 
-n_distinct(projects$projectid[projects$trackval==2&as.Date(projects$installeddate)>="2017-01-01"])
+
+# contacts
+contacts$cont_val<-1
+contacts$cont_val[contacts$CRMContactRole=="ATTENDEE"|contacts$CRMContactRole=="HOSTOWNR"|contacts$CRMContactRole=="MGRPROP"|contacts$CRMContactRole=="ACCTSREC"]<-2
+contacts$cont_val[contacts$CRMContactRole==""]<-3
+table(contacts$cont_val)
+
+contacts$date<-as.Date(contacts$MostRecentProjectDate)
+table(is.na(contacts$date),contacts$cont_val)
+
+contacts$part_phone<-contacts$CRMContactMobilePhone
+contacts$part_phone[contacts$part_phone==""]<-contacts$CRMContactBusinessPhone[contacts$part_phone==""]
+contacts$part_phone[contacts$part_phone==""]<-contacts$CRMContactHomePhone[contacts$part_phone==""]
+contacts$part_phone[contacts$part_phone==""]<-contacts$CRMCompanyPhone[contacts$part_phone==""]
+contacts$part_phone[contacts$part_phone==""]<-contacts$CRMCompanyOtherPhone[contacts$part_phone==""]
+table(contacts$part_phone=="")
+
+contacts$part_email<-contacts$CRMContactEmail
+contacts$part_email[contacts$part_email==""]<-contacts$CRMCompanyEmail[contacts$part_email==""]
+table(contacts$part_email=="")
+
+PartCon<-contacts %>% filter(et_siteid%in%Parts$et_siteid) %>% select(1:30,39:44) %>% unique() %>% filter(DoNotContact==0&CompanyDoNotContact==0&CRMContactName!=""&part_email!=""&part_phone!="") %>% group_by(et_siteid) %>% arrange(cont_val,desc(date)) %>% mutate(rank=1:n()) %>% filter(rank<=3)
+
+PartConagg<-PartCon %>% group_by(et_siteid) %>% summarise(n=n(),companies=n_distinct(CRMCompanyName),Primary_Contact=CRMContactName[rank==1],C1_Company=CRMCompanyName[rank==1],C1_phone=part_phone[rank==1],C1_email=part_email[rank==1],C1_Current_as_of=date[rank==1],
+  C2_Name=ifelse(n>1,CRMContactName[rank==2],"NA"),C2_Company=ifelse(n>1,CRMCompanyName[rank==2],"NA"),C2_phone=ifelse(n>1,part_phone[rank==2],"NA"),C2_email=ifelse(n>1,part_email[rank==2],"NA"),
+  C3_Name=ifelse(n>2,CRMContactName[rank==3],"NA"),C3_Company=ifelse(n>2,CRMCompanyName[rank==3],"NA"),C3_phone=ifelse(n>2,part_phone[rank==3],"NA"),C3_email=ifelse(n>2,part_email[rank==3],"NA"))
+
+PartFrame<-left_join(Parts,PartConagg,by="et_siteid") %>% filter(!is.na(Primary_Contact))
