@@ -56,3 +56,23 @@ PartConagg<-PartCon %>% group_by(et_siteid) %>% summarise(n=n(),companies=n_dist
   C3_Name=ifelse(n>2,CRMContactName[rank==3],"NA"),C3_Company=ifelse(n>2,CRMCompanyName[rank==3],"NA"),C3_phone=ifelse(n>2,part_phone[rank==3],"NA"),C3_email=ifelse(n>2,part_email[rank==3],"NA"))
 
 PartFrame<-left_join(Parts,PartConagg,by="et_siteid") %>% filter(!is.na(Primary_Contact))
+
+# dedupe
+PartFrame_dedupe<-PartFrame %>% group_by(Primary_Contact) %>% arrange(desc(substr(segment,3,3)),as.numeric(substr(segment,1,1))) %>% mutate(contact_n_siteids=n(),row=1:n()) %>% filter(row==1) %>% data.frame()
+table(PartFrame_dedupe$segment)
+
+PartFrame_dedupe$C2_Name[PartFrame_dedupe$C2_Name%in%PartFrame_dedupe$Primary_Contact]<-"NA"
+PartFrame_dedupe$C2_Company[PartFrame_dedupe$C2_Name%in%PartFrame_dedupe$Primary_Contact]<-"NA"
+PartFrame_dedupe$C2_phone[PartFrame_dedupe$C2_Name%in%PartFrame_dedupe$Primary_Contact]<-"NA"
+PartFrame_dedupe$C2_email[PartFrame_dedupe$C2_Name%in%PartFrame_dedupe$Primary_Contact]<-"NA"
+table(PartFrame_dedupe$C2_Name=="NA")
+
+PartFrame_dedupe$C3_Name[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_Contact|PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$C2_Name]<-"NA"
+PartFrame_dedupe$C3_Company[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_Contact|PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$C2_Name]<-"NA"
+PartFrame_dedupe$C3_phone[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_Contact|PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$C2_Name]<-"NA"
+PartFrame_dedupe$C3_email[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_Contact|PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$C2_Name]<-"NA"
+table(PartFrame_dedupe$C3_Name=="NA")
+
+# non-parts
+
+
