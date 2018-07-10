@@ -73,6 +73,36 @@ PartFrame_dedupe$C3_phone[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_C
 PartFrame_dedupe$C3_email[PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$Primary_Contact|PartFrame_dedupe$C3_Name%in%PartFrame_dedupe$C2_Name]<-"NA"
 table(PartFrame_dedupe$C3_Name=="NA")
 
+# rename segments
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="1-P"]<-"Past SEM"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="2-P"]<-"Past Custom"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="3-P"]<-"Past DI"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="4-P"]<-"Past Standard"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="5-P"]<-"Past Lighting"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="1-R"]<-"Recent SEM"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="2-R"]<-"Recent Custom"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="3-R"]<-"Recent DI"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="4-R"]<-"Recent Standard"
+PartFrame_dedupe$segment[PartFrame_dedupe$segment=="5-R"]<-"Recent Lighting"
+table(PartFrame_dedupe$segment)
+
+j<-0
+for (i in unique(PartFrame_dedupe$segment)){
+  if(WRITE!=TRUE){break}
+  j<-j+1
+  frameout<-PartFrame_dedupe %>% filter(segment==i) %>% data.frame()
+  if(j==1){
+    write.xlsx(frameout,"/Users/Lehndorff/desktop/Part_Frame.xlsx",append = FALSE,sheetName = i,row.names = FALSE)
+  }else{
+    write.xlsx(frameout,"/Users/Lehndorff/desktop/Part_Frame.xlsx",append = TRUE,sheetName = i,row.names = FALSE)
+  }
+  if(j=n_distinct(PartFrame_dedupe$segment)){
+    j<-0
+    rm(i,WRITE)
+  }
+}
+
 # non-parts
-
-
+NonPartCon<-contacts %>% filter(MostRecentProjectTrack==""&(CostarOwnerPhone!=""|InfousaPhone!=""))
+test<-subset(projects,et_siteid%in%NonPartCon$et_siteid)
+test2<-subset(population,et_siteid%in%NonPartCon$et_siteid)
