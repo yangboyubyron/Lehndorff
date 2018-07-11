@@ -103,6 +103,41 @@ for (i in unique(PartFrame_dedupe$segment)){
 }
 
 # non-parts
-NonPartCon<-contacts %>% filter(MostRecentProjectTrack==""&(CostarOwnerPhone!=""|InfousaPhone!=""))
-test<-subset(projects,et_siteid%in%NonPartCon$et_siteid)
-test2<-subset(population,et_siteid%in%NonPartCon$et_siteid)
+nonpartproj<-subset(projects,programdescription=="")$et_siteid
+
+NonPartCon<-contacts %>% filter(et_siteid%in%nonpartproj&CRMContactName==""&CRMContactEmail==""&CRMContactBusinessPhone==""&CRMContactMobilePhone=="") %>% 
+  filter((CostarOwnerName!=""&CostarOwnerContact!=""&CostarOwnerPhone!="")|(InfousaCompanyName!=""&InfousaContactName!=""&InfousaPhone!=""))
+NonPartPop<-population %>% filter(et_siteid%in%NonPartCon$et_siteid&participanttype=="Non-Participant")
+
+NonPartPop$naicsgroup<-999
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==11]<-3
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==21]<-3
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==22]<-3
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==23]<-3
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==42]<-44
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==44]<-44
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==45]<-44
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==48]<-48
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==49]<-48
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==5]<-5
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==61]<-61
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==71]<-71
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==3]<-3
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==62]<-62
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==721]<-721
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==722]<-722
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==811]<-811
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==812]<-811
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==813]<-813
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==92]<-92
+table(NonPartPop$naicsgroup)
+
+table(substr(NonPartPop$naics_code[NonPartPop$naicsgroup==999],1,2),exclude = FALSE)
+
+# MMBtu
+NonPartPop$MMBtu<-rowSums(NonPartPop %>% select(kwh2017,therms2017) %>% mutate(kwh2017=kwh2017*0.0034121412,therms2017=therms2017*.1),na.rm = TRUE) 
+summary(NonPartPop$MMBtu)
+
+NonPartPop %>% group_by(naicsgroup) %>% mutate(naicstotal=sum(MMBtu),)
+  
+  
