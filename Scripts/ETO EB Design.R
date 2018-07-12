@@ -86,6 +86,12 @@ PartFrame_dedupe$segment[PartFrame_dedupe$segment=="4-R"]<-"Recent Standard"
 PartFrame_dedupe$segment[PartFrame_dedupe$segment=="5-R"]<-"Recent Lighting"
 table(PartFrame_dedupe$segment)
 
+# summary table
+PartFrame_summary<-PartFrame_dedupe %>% group_by(track=sub("[[:alpha:]]+[[:space:]]","",segment),timeframe=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n()) %>% arrange(track,desc(timeframe)) %>% data.frame()
+# write.xlsx(PartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = FALSE,sheetName = "Participants",row.names = FALSE)
+
+# write out frame by segment
+
 j<-0
 for (i in unique(PartFrame_dedupe$segment)){
   if(WRITE!=TRUE){break}
@@ -159,3 +165,12 @@ NonPartFrame_dedupe<-NonPartFrame %>%
   filter(drop1==FALSE&drop2==FALSE) %>% select(-n1,-n2,-drop1,-drop2)
 
 table(NonPartFrame_dedupe$segment)
+
+# summary table
+
+NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha:]]+[[:space:]]","",segment),Size=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n()) %>% data.frame()
+# write.xlsx(NonPartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Non-Participants",row.names = FALSE)
+
+# write out frame by naics group
+
+
