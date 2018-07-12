@@ -106,30 +106,32 @@ for (i in unique(PartFrame_dedupe$segment)){
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
 
 NonPartCon<-contacts %>% filter(et_siteid%in%nonpartproj&CRMContactName==""&CRMContactEmail==""&CRMContactBusinessPhone==""&CRMContactMobilePhone=="") %>% 
-  filter((CostarOwnerName!=""&CostarOwnerContact!=""&CostarOwnerPhone!="")|(InfousaCompanyName!=""&InfousaContactName!=""&InfousaPhone!=""))
+  filter((CostarOwnerName!=""&CostarOwnerContact!=""&CostarOwnerPhone!="")|(InfousaCompanyName!=""&InfousaContactName!=""&InfousaPhone!="")) %>% 
+  group_by(et_siteid) %>% mutate(row=1:n()) %>% filter(row==1)
+
 NonPartPop<-population %>% filter(et_siteid%in%NonPartCon$et_siteid&participanttype=="Non-Participant")
 
-NonPartPop$naicsgroup<-999
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==11]<-3
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==21]<-3
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==22]<-3
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==23]<-3
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==42]<-44
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==44]<-44
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==45]<-44
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==48]<-48
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==49]<-48
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==5]<-5
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==61]<-61
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==71]<-71
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==3]<-3
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==62]<-62
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==721]<-721
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==722]<-722
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==811]<-811
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==812]<-811
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==813]<-813
-NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==92]<-92
+NonPartPop$naicsgroup<-"Unknown"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==11]<-"Industrial"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==21]<-"Industrial"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==22]<-"Industrial"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==23]<-"Industrial"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==42]<-"Retail"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==44]<-"Retail"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==45]<-"Retail"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==48]<-"Warehouse"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==49]<-"Warehouse"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==5]<-"Office"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==61]<-"School"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==71]<-"Recreation"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,1)==3]<-"Industrial"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==62]<-"Medical"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==721]<-"Hotel"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==722]<-"Restaurant"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==811]<-"Repair"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==812]<-"Repair"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,3)==813]<-"Religious"
+NonPartPop$naicsgroup[substr(NonPartPop$naics_code,1,2)==92]<-"Public"
 table(NonPartPop$naicsgroup)
 
 table(substr(NonPartPop$naics_code[NonPartPop$naicsgroup==999],1,2),exclude = FALSE)
@@ -138,6 +140,22 @@ table(substr(NonPartPop$naics_code[NonPartPop$naicsgroup==999],1,2),exclude = FA
 NonPartPop$MMBtu<-rowSums(NonPartPop %>% select(kwh2017,therms2017) %>% mutate(kwh2017=kwh2017*0.0034121412,therms2017=therms2017*.1),na.rm = TRUE) 
 summary(NonPartPop$MMBtu)
 
-NonPartPop %>% group_by(naicsgroup) %>% mutate(naicstotal=sum(MMBtu),)
-  
-  
+NonPartPop$sizegroup<-"Large"
+NonPartPop$sizegroup[NonPartPop$MMBtu<1000]<-"Medium"
+NonPartPop$sizegroup[NonPartPop$MMBtu<100]<-"Small"
+table(NonPartPop$sizegroup)
+
+NonPartPop$segment<-paste(NonPartPop$sizegroup,NonPartPop$naicsgroup,sep = " ")
+table(NonPartPop$segment)
+
+# join to contacts
+NonPartConSeg<-left_join(NonPartCon,select(NonPartPop,c(et_siteid,segment)),by="et_siteid") %>% filter(!is.na(segment))
+
+NonPartFrame<-select(NonPartConSeg,c(et_siteid,SiteName,SiteStreetAddress,SiteCity,segment,CostarOwnerName,CostarOwnerContact,CostarOwnerPhone,InfousaCompanyName,InfousaContactName,InfousaPhone))
+
+NonPartFrame_dedupe<-NonPartFrame %>% 
+  group_by(CostarOwnerName) %>% mutate(n1=1:n(),drop1=(n1>1&CostarOwnerName!="")) %>% ungroup() %>%
+  group_by(InfousaContactName) %>% mutate(n2=1:n(),drop2=(n2>1&InfousaContactName!="")) %>%
+  filter(drop1==FALSE&drop2==FALSE) %>% select(-n1,-n2,-drop1,-drop2)
+
+table(NonPartFrame_dedupe$segment)
