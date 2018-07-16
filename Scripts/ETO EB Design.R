@@ -174,3 +174,10 @@ NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha
 # write out frame by naics group
 
 
+# Contractors
+trade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Trade Allies for Process Eval.csv",stringsAsFactors = FALSE)
+
+ally<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1))
+n_distinct(ally$TradeAllyName)==n_distinct(trade$TradeAllyName)
+
+non_ally<-projects %>% filter(!installercompanyname%in%ally$TradeAllyName)
