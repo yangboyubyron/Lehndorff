@@ -3,6 +3,11 @@ library(xlsx)
 library(dplyr)
 library(lubridate)
 
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
 population<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Eligible Commercial Sites.csv",stringsAsFactors = FALSE)
 projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Projects.csv",stringsAsFactors = FALSE)
 contacts<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Contacts.csv",stringsAsFactors = FALSE)
@@ -176,8 +181,22 @@ NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha
 
 # Contractors
 trade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Trade Allies for Process Eval.csv",stringsAsFactors = FALSE)
+trade$actval<-5
+trade$actval[trade$activity=="Inactive"]<-4
+trade$actval[trade$activity=="Low Activity"]<-3
+trade$actval[trade$activity=="Medium Activity"]<-2
+trade$actval[trade$activity=="High Activity"]<-1
+table(trade$actval)
 
 ally<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1))
+ally_act<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1)) %>% summarise(activity=min(actval))
+
 n_distinct(ally$TradeAllyName)==n_distinct(trade$TradeAllyName)
 
 non_ally<-projects %>% filter(!installercompanyname%in%ally$TradeAllyName)
+
+contractor_proj<-projects %>% mutate(Ally=installercompanyname%in%ally$TradeAllyName)
+table(contractor_proj$ally)
+
+contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=n(),most_common=Mode(sort(trackval[trackval<1000])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
+contproj_agg_act<-left_join(contproj_agg,ally_act,by=c("installercompanyname"="TradeAllyName"))
