@@ -198,11 +198,35 @@ non_ally<-projects %>% filter(!installercompanyname%in%ally$TradeAllyName)
 contractor_proj<-projects %>% mutate(Ally=installercompanyname%in%ally$TradeAllyName)
 table(contractor_proj$ally)
 
-contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=n(),most_common=Mode(sort(trackval[trackval<1000])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
+contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=length(installercompanyname[date>="2017-01-01"]),most_common=Mode(sort(trackval[trackval<1000&date>="2017-01-01"])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
 contproj_agg_act<-left_join(contproj_agg,ally_act,by=c("installercompanyname"="TradeAllyName"))
 
-contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=40]<-1
-contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=15]<-2
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=20]<-1
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=10]<-2
 contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>0]<-3
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj==0]<-4
 
 contproj_agg_act$act_level<-"NOT DEFINED"
+contproj_agg_act$act_level[contproj_agg_act$activity==1]<-"High Activity"
+contproj_agg_act$act_level[contproj_agg_act$activity==2]<-"Medium Activity"
+contproj_agg_act$act_level[contproj_agg_act$activity==3]<-"Low Activity"
+contproj_agg_act$act_level[contproj_agg_act$activity==4]<-"Inactive"
+table(contproj_agg_act$act_level)
+
+contproj_agg_act$track_level<-"Past/Other"
+contproj_agg_act$track_level[contproj_agg_act$most_common==1]<-"SEM"
+contproj_agg_act$track_level[contproj_agg_act$most_common==2]<-"Custom"
+contproj_agg_act$track_level[contproj_agg_act$most_common==3]<-"DI"
+contproj_agg_act$track_level[contproj_agg_act$most_common==4]<-"Standard"
+contproj_agg_act$track_level[contproj_agg_act$most_common==5]<-"Lighting"
+table(contproj_agg_act$track_level)
+
+contproj_agg_act$ally_level<-"Ally"
+contproj_agg_act$ally_level[!contproj_agg_act$ally]<-"Non-Ally"
+table(contproj_agg_act$ally_level)
+
+contproj_agg_act$segment<-paste(contproj_agg_act$act_level,contproj_agg_act$track_level,contproj_agg_act$ally_level,sep = " ")
+table(contproj_agg_act$segment)
+
+contractor_summary<-contproj_agg_act %>% group_by(ally,most_common,activity,segment) %>% summarise(n=n()) %>% arrange(-ally,most_common,activity) %>% ungroup() %>% select(segment,n)
+
