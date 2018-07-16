@@ -189,7 +189,7 @@ trade$actval[trade$activity=="High Activity"]<-1
 table(trade$actval)
 
 ally<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1))
-ally_act<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1)) %>% summarise(activity=min(actval))
+ally_act<-trade %>% group_by(TradeAllyName) %>% mutate(n=1:n(),use=sum(EBProcessFlag)) %>% filter(EBProcessFlag==1|(EBProcessFlag==0&n==1)) %>% summarise(activity=min(actval),EBproc=max(EBProcessFlag))
 
 n_distinct(ally$TradeAllyName)==n_distinct(trade$TradeAllyName)
 
@@ -200,6 +200,7 @@ table(contractor_proj$ally)
 
 contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=length(installercompanyname[date>="2017-01-01"]),most_common=Mode(sort(trackval[trackval<1000&date>="2017-01-01"])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
 contproj_agg_act<-left_join(contproj_agg,ally_act,by=c("installercompanyname"="TradeAllyName"))
+contproj_agg_act$EBproc[is.na(contproj_agg_act$EBproc)]<-1
 
 contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=20]<-1
 contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=10]<-2
@@ -228,5 +229,6 @@ table(contproj_agg_act$ally_level)
 contproj_agg_act$segment<-paste(contproj_agg_act$act_level,contproj_agg_act$track_level,contproj_agg_act$ally_level,sep = " ")
 table(contproj_agg_act$segment)
 
-contractor_summary<-contproj_agg_act %>% group_by(ally,most_common,activity,segment) %>% summarise(n=n()) %>% arrange(-ally,most_common,activity) %>% ungroup() %>% select(segment,n)
+contractor_summary<-contproj_agg_act %>% filter(EBproc!=0) %>% group_by(ally,most_common,activity,act_level,track_level,ally_level,segment) %>% summarise(number_of_companies=n()) %>% arrange(-ally,most_common,activity) %>% ungroup() %>% select(act_level,track_level,ally_level,segment,number_of_companies) %>% as.data.frame()
+# write.xlsx(contractor_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Contractors",row.names = FALSE)
 
