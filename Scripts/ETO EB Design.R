@@ -200,3 +200,9 @@ table(contractor_proj$ally)
 
 contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=n(),most_common=Mode(sort(trackval[trackval<1000])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
 contproj_agg_act<-left_join(contproj_agg,ally_act,by=c("installercompanyname"="TradeAllyName"))
+
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=40]<-1
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>=15]<-2
+contproj_agg_act$activity[is.na(contproj_agg_act$activity)&contproj_agg_act$n_proj>0]<-3
+
+contproj_agg_act$act_level<-"NOT DEFINED"
