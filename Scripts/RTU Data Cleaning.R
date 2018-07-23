@@ -182,11 +182,11 @@ table(RTUpre$strata)
 
 # create file with all data and sample groups. Clear enviroment.
 EEIDS<-read.csv("~/desktop/EE_RTU_IDs.csv",stringsAsFactors=FALSE)
-RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUFrame.csv",stringsAsFactors = FALSE)
-RTUsample1<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft0420.csv",stringsAsFactors=FALSE)
-RTUsample2<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/second mailing/RTUdraft_SAMPLE2_0504.csv",stringsAsFactors = FALSE)
-RTUsample3<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE3_0530.csv",stringsAsFactors=FALSE)
-RTUsample4<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTUdraft_SAMPLE4_0530.csv",stringsAsFactors = FALSE)
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUFrame.csv",stringsAsFactors = FALSE)
+RTUsample1<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft0420.csv",stringsAsFactors=FALSE)
+RTUsample2<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2. Second Mailing/RTUdraft_SAMPLE2_0504.csv",stringsAsFactors = FALSE)
+RTUsample3<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE3_0530.csv",stringsAsFactors=FALSE)
+RTUsample4<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE4_0530.csv",stringsAsFactors = FALSE)
 RTUdata<-left_join(RTUin,select(EEIDS,c(Site_Address_Combined2,EEID)),by="Site_Address_Combined2")
 
 RTUdata$Sample<-"Not yet sampled"
@@ -198,4 +198,22 @@ table(RTUdata$Sample)
 
 # write.csv(RTUdata,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/RTU Project (for desktop)/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",row.names = FALSE)
 
+# Sample 5. Clear enviroment.
+EEIDS<-read.csv("~/desktop/EE_RTU_IDs.csv",stringsAsFactors=FALSE)
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",stringsAsFactors = FALSE)
+RTUdata<-RTUin
 
+set.seed(948577)
+RTUdata$samplable<-(RTUdata$strata=="3C"|RTUdata$strata=="12C")
+RTUpre<-RTUdata%>%filter(!local_government&!drop_A_pre0714&!drop_C_pre0714&Sample=="Not yet sampled"&validEmail!="No valid email")%>%group_by(samplable)%>%mutate(rand=runif(length(strata),0,1),rank=rank(rand))
+RTUpre$select<-0
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"]<-1
+
+table(RTUpre$select,RTUpre$strata)
+table(RTUpre$strata)
+
+RTUout<-select(RTUpre%>%filter(select==1)%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata))
+
+table(paste(RTUout$CZ,RTUout$Channel,sep=""))
+
+# write.csv(RTUout,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE5_0719.csv",row.names = FALSE)
