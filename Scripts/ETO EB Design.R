@@ -233,3 +233,8 @@ table(contproj_agg_act$segment)
 contractor_summary<-contproj_agg_act %>% filter(EBproc!=0) %>% group_by(ally,most_common,activity,act_level,track_level,ally_level,segment) %>% summarise(number_of_companies=n()) %>% arrange(-ally,most_common,activity) %>% ungroup() %>% select(act_level,track_level,ally_level,segment,number_of_companies) %>% as.data.frame()
 # write.xlsx(contractor_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Contractors",row.names = FALSE)
 
+# ATACs
+table(projects$evaluationdescription[projects$projecttrackdescription=="Existing Buildings - Custom"])
+ATAC1<-projects %>% filter(projecttrackdescription=="Existing Buildings - Custom"&evaluationdescription=="Study"&year>=2016) %>% 
+  group_by(year) %>% summarise(n_proj=n(),total_cost=sum(installcost))
+
