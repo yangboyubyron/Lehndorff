@@ -112,8 +112,25 @@ characterization<-population %>% group_by(fuel_size,naicsgroup,participation) %>
 
 ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
   geom_bar(position = "fill",aes(x=naicsgroup,fill=fuel_size))+
+  theme(axis.text.x = element_text(angle = 90))+
   facet_grid(participation~.)
 
 ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
   geom_bar(position = "dodge",aes(x=naicsgroup,fill=fuel_size))+
+  theme(axis.text.x = element_text(angle = 90))+
   facet_grid(participation~.)
+
+ggplot(characterization %>% filter(participation=="Participant"))+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_point(aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,color=naicsgroup))
+
+ggplot(characterization %>% filter(participation=="Participant"))+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_bar(stat = "identity",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,fill=naicsgroup))+
+  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=7))+
+  theme(legend.position = "none")
+
+ggplot(characterization %>% filter(participation=="Participant"))+
+  geom_bin2d(aes(x=naicsgroup,y=fuel_size,fill=pct))+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_fill_continuous(high="#008c00",low="#ff0000")
