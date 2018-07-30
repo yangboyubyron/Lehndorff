@@ -12,6 +12,8 @@ Mode <- function(x) {
 population<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Eligible Commercial Sites.csv",stringsAsFactors = FALSE)
 projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Projects.csv",stringsAsFactors = FALSE)
 contacts<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Contacts.csv",stringsAsFactors = FALSE)
+counties<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Oregon and SW Washington zip codes.csv",stringsAsFactors = FALSE)
+regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
 
 # assign NAICS group
 population$naicsgroup<-"Unknown"
@@ -92,6 +94,16 @@ population$fuel_size[population$fuel_group=="Electric and Gas"&(population$kwh20
 population$fuel_size[population$fuel_group=="Electric and Gas"&(population$kwh2017*0.0034121412+population$therms2017*.1)<100]<-"Small"
 
 table(population$fuel_size,population$fuel_group)
+
+# Region
+zip_region<-left_join(counties,regions,by="County")
+population<-left_join(population,zip_region,by=c("et_zip"="Zip.Code"))
+table(population$Regions.for.EB.Process,exclude=NULL)
+
+population<-population %>% group_by(et_city) %>% mutate(Region=ifelse(et_state=="WA","Southwest Washington",first(sort(unique(Regions.for.EB.Process)))))
+table(population$Region,exclude = NULL)
+
+test<-subset(population, is.na(Region))
 
 # Participation
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
