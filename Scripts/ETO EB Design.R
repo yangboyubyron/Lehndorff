@@ -235,6 +235,16 @@ contractor_summary<-contproj_agg_act %>% filter(EBproc!=0) %>% group_by(ally,mos
 
 # ATACs
 table(projects$evaluationdescription[projects$projecttrackdescription=="Existing Buildings - Custom"])
-ATAC1<-projects %>% filter(projecttrackdescription=="Existing Buildings - Custom"&evaluationdescription=="Study"&year>=2016) %>% 
-  group_by(year) %>% summarise(n_proj=n(),total_cost=sum(installcost))
+Has_ATAC<-projects %>% filter(projecttrackdescription=="Existing Buildings - Custom"&evaluationdescription=="Study"&year>=2016)
+
+table(projects$evaluationdescription[projects$projectid%in%Has_ATAC$projectid])
+
+ATAC_Summary<-Has_ATAC %>% group_by(year) %>% summarise(n_proj=n_distinct(projectid),total_cost=sum(installcost))
+
+ATAC_And<-projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(projectid,installercompanyname) %>% summarise(years=n_distinct(year),n_total_measures=n(),ATAC_studies=sum(evaluationdescription=="Study"),ATAC_value=sum(installcost[evaluationdescription=="Study"]),non_ATAC_measures=sum(evaluationdescription!="Study"))
+mean(ATAC_And$non_ATAC_measures>0)
+
+
+ATAC_Con_out<-ATAC_And %>% filter(ATAC_studies>0) %>% group_by(installercompanyname) %>% summarise(total_projects=n_distinct(projectid), total_measures=sum(n_total_measures),total_ATAC_studies=sum(ATAC_studies),total_ATAC_values=sum(ATAC_value),total_non_ATAC=sum(non_ATAC_measures))
+# write.csv(ATAC_Con_out,"~/desktop/ATAC_Summary.csv",row.names = FALSE)
 
