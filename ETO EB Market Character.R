@@ -14,6 +14,7 @@ projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All C
 contacts<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Contacts.csv",stringsAsFactors = FALSE)
 counties<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Oregon and SW Washington zip codes.csv",stringsAsFactors = FALSE)
 regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
+industries<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Employment by Industry.csv",stringsAsFactors = FALSE)
 
 # assign NAICS group
 population$naicsgroup<-"Unknown"
@@ -119,7 +120,7 @@ table(population$participation,population$participanttype)
 population$participation<-ifelse(population$participation,"Participant","Non-Participant")
 
 # output
-characterization<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n()) %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n),2)) %>% 
+characterization<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(as.numeric(kwh2017),na.rm = TRUE),Therms=sum(as.numeric(therms2017),na.rm = TRUE)) %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n),2),pctkWh=round(kWh/sum(kWh),2),pctTherms=round(Therms/sum(Therms),2)) %>% 
   arrange(participation,naicsgroup)
 
 ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
@@ -146,3 +147,83 @@ ggplot(characterization %>% filter(participation=="Participant"))+
   geom_bin2d(aes(x=naicsgroup,y=fuel_size,fill=pct))+
   theme(axis.text.x = element_text(angle = 90))+
   scale_fill_continuous(high="#008c00",low="#ff0000")
+
+ggplot(characterization)+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=kWh,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(characterization)+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=Therms,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(characterization)+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=kWh,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(characterization)+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=Therms,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
+
+# compare with ODE
+## assign NAICS group
+industries$naicsgroup<-"Unknown"
+industries$naicsgroup[substr(industries$Naics,1,2)==11]<-"Industrial"
+industries$naicsgroup[substr(industries$Naics,1,2)==21]<-"Industrial"
+industries$naicsgroup[substr(industries$Naics,1,2)==22]<-"Industrial"
+industries$naicsgroup[substr(industries$Naics,1,2)==23]<-"Industrial"
+industries$naicsgroup[substr(industries$Naics,1,2)==42]<-"Retail"
+industries$naicsgroup[substr(industries$Naics,1,2)==44]<-"Retail"
+industries$naicsgroup[substr(industries$Naics,1,2)==45]<-"Retail"
+industries$naicsgroup[substr(industries$Naics,1,2)==48]<-"Warehouse"
+industries$naicsgroup[substr(industries$Naics,1,2)==49]<-"Warehouse"
+industries$naicsgroup[substr(industries$Naics,1,1)==5]<-"Office"
+industries$naicsgroup[substr(industries$Naics,1,2)==61]<-"School"
+industries$naicsgroup[substr(industries$Naics,1,2)==71]<-"Recreation"
+industries$naicsgroup[substr(industries$Naics,1,1)==3]<-"Industrial"
+industries$naicsgroup[substr(industries$Naics,1,2)==62]<-"Medical"
+industries$naicsgroup[substr(industries$Naics,1,3)==721]<-"Hotel"
+industries$naicsgroup[substr(industries$Naics,1,3)==722]<-"Restaurant"
+industries$naicsgroup[substr(industries$Naics,1,3)==811]<-"Repair"
+industries$naicsgroup[substr(industries$Naics,1,3)==812]<-"Repair"
+industries$naicsgroup[substr(industries$Naics,1,3)==813]<-"Religious"
+industries$naicsgroup[substr(industries$Naics,1,2)==92]<-"Public"
+industries$naicsgroup[substr(industries$Naics,1,3)==814]<-"Private Households"
+table(industries$naicsgroup)
+
+pop_by_naics<-population %>% group_by(naicsgroup) %>% summarise(in_eto=n())
+IndAgg<-industries %>% group_by(naicsgroup) %>% summarise(Units=sum(as.numeric(gsub(",","",Units))))
+State_adj<-full_join(pop_by_naics,IndAgg,by="naicsgroup") %>% mutate(adj=Units/in_eto)
+State_adj$adj[is.na(State_adj$adj)]<-1
+
+# adjusted plots
+characterization_adj<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(kwh2017,na.rm = TRUE),Therms=sum(therms2017,na.rm = TRUE)) %>% left_join(State_adj,by="naicsgroup") %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n*adj),2)) %>% 
+  arrange(participation,naicsgroup)
+
+characterization_adj$kWh_adj<-characterization_adj$kWh*ifelse(characterization_adj$participation=="Participant",1,characterization_adj$adj)
+characterization_adj$Therms_adj<-characterization_adj$Therms*ifelse(characterization_adj$participation=="Participant",1,characterization_adj$adj)
+
+avg_pct<-weighted.mean(subset(characterization_adj,participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial")$pct,w=subset(characterization_adj,participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial")$n)
+
+ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_point(aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,color=naicsgroup))
+
+ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_bar(stat = "identity",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,fill=naicsgroup))+
+  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=7))+
+  theme(legend.position = "none")+
+  geom_hline(aes(yintercept=weighted.mean(avg_pct)))
+
+ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
+  geom_bin2d(aes(x=naicsgroup,y=fuel_size,fill=pct))+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_fill_gradient2(high="#008c00",low="#ff0000",midpoint=.5,mid="yellow")
+
+ggplot(characterization_adj%>% filter(naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=kWh_adj,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(characterization_adj%>% filter(naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
+  geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=Therms_adj,fill=participation))+
+  theme(axis.text.x = element_text(angle = 90))
