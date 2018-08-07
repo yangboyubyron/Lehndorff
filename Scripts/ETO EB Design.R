@@ -29,22 +29,25 @@ population$naicsgroup[substr(population$naics_code,1,2)==45]<-"Retail"
 population$naicsgroup[substr(population$naics_code,1,2)==48]<-"Warehouse"
 population$naicsgroup[substr(population$naics_code,1,2)==49]<-"Warehouse"
 population$naicsgroup[substr(population$naics_code,1,1)==5]<-"Office"
-population$naicsgroup[substr(population$naics_code,1,2)==61]<-"School"
+population$naicsgroup[substr(population$naics_code,1,4)==6111]<-"School K-12"
+population$naicsgroup[substr(population$naics_code,1,2)==61&substr(population$naics_code,1,4)!=6111]<-"Higher Education"
 population$naicsgroup[substr(population$naics_code,1,2)==71]<-"Recreation"
 population$naicsgroup[substr(population$naics_code,1,1)==3]<-"Industrial"
-population$naicsgroup[substr(population$naics_code,1,2)==62]<-"Medical"
-population$naicsgroup[substr(population$naics_code,1,3)==721]<-"Hotel"
+population$naicsgroup[substr(population$naics_code,1,2)==62]<-"Healthcare"
+population$naicsgroup[substr(population$naics_code,1,3)==721]<-"Hospitality"
 population$naicsgroup[substr(population$naics_code,1,3)==722]<-"Restaurant"
 population$naicsgroup[substr(population$naics_code,1,3)==811]<-"Repair"
 population$naicsgroup[substr(population$naics_code,1,3)==812]<-"Repair"
 population$naicsgroup[substr(population$naics_code,1,3)==813]<-"Religious"
-population$naicsgroup[substr(population$naics_code,1,2)==92]<-"Public"
+population$naicsgroup[substr(population$naics_code,1,2)==92]<-"Government"
+population$naicsgroup[substr(population$naics_code,1,4)==8123]<-"Laundry/Dry Cleaner"
 table(population$naicsgroup,exclude = NULL)
 
 projects<-projects2 %>% left_join(sector_groups,by="et_marketname") %>% left_join(select(population,et_siteid,naicsgroup),by="et_siteid")
 table(projects$Evergreen.categories,exclude=NULL)
 
 projects$Evergreen.categories[projects$Evergreen.categories=="Unknown"&!is.na(projects$Evergreen.categories)]<-projects$naicsgroup[projects$Evergreen.categories=="Unknown"&!is.na(projects$Evergreen.categories)]
+table(projects$Evergreen.categories,exclude = NULL)
 
 table(projects$projecttrackdescription)
 table(projects$projecttrackdescription[projects$programdescription=="Existing Buildings"])
