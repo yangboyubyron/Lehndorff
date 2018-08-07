@@ -14,6 +14,7 @@ contacts<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All C
 impact_surv<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB 17 Sample Data Request v2_impact evaluation.csv",stringsAsFactors = FALSE)
 SEM<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/SEM impact data/SEM and Capital Participation Data to Evergreen.csv",stringsAsFactors = FALSE)
 sector_groups<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB market sector categories.csv",stringsAsFactors = FALSE) %>% select(et_marketname,Evergreen.categories)
+impact_include<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Include from impact.csv",stringsAsFactors = FALSE)
 
 # assign NAICS group to population
 population$naicsgroup<-"Unknown"
@@ -133,6 +134,13 @@ PartFrame_dedupe$segment[PartFrame_dedupe$segment=="3-R"]<-"Recent DI"
 PartFrame_dedupe$segment[PartFrame_dedupe$segment=="4-R"]<-"Recent Standard"
 PartFrame_dedupe$segment[PartFrame_dedupe$segment=="5-R"]<-"Recent Lighting"
 table(PartFrame_dedupe$segment)
+
+# remove impact study parts
+impact_include$match<-paste(impact_include$et_siteid,impact_include$segment,sep = " - ")
+PartFrame_dedupe$match<-paste(PartFrame_dedupe$et_siteid,PartFrame_dedupe$segment,sep = " - ")
+table(impact_include$match%in%PartFrame_dedupe$match)
+
+PartFrame_dedupe<-PartFrame_dedupe %>% filter((any_impact==0|match%in%impact_include$match))
 
 # summary table
 PartFrame_summary<-PartFrame_dedupe %>% group_by(track=sub("[[:alpha:]]+[[:space:]]","",segment),timeframe=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n(),impact=sum(any_impact)) %>% arrange(track,desc(timeframe)) %>% data.frame()
@@ -284,10 +292,15 @@ table(projects$evaluationdescription[projects$projectid%in%Has_ATAC$projectid])
 
 ATAC_Summary<-Has_ATAC %>% group_by(year) %>% summarise(n_proj=n_distinct(projectid),total_cost=sum(installcost))
 
-ATAC_And<-projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(projectid,installercompanyname) %>% summarise(years=n_distinct(year),n_total_measures=n(),ATAC_studies=sum(evaluationdescription=="Study"),ATAC_value=sum(installcost[evaluationdescription=="Study"]),non_ATAC_measures=sum(evaluationdescription!="Study"))
-mean(ATAC_And$non_ATAC_measures>0)
+# ATAC_And<-projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(projectid,installercompanyname) %>% summarise(years=n_distinct(year),n_total_measures=n(),ATAC_studies=sum(evaluationdescription=="Study"),ATAC_value=sum(installcost[evaluationdescription=="Study"]),non_ATAC_measures=sum(evaluationdescription!="Study"))
+# mean(ATAC_And$non_ATAC_measures>0)
 
+ATAC_Con_out <- projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(installercompanyname) %>% summarise(ATAC_2016=n_distinct(projectid[evaluationdescription=="Study"&year==2016]),ATAC_2017=n_distinct(projectid[evaluationdescription=="Study"&year==2017]),
+  ATAC_2018=n_distinct(projectid[evaluationdescription=="Study"&year==2018]),Total_ATAC=n_distinct(projectid[evaluationdescription=="Study"]),
+  Value_2016=sum(installcost[evaluationdescription=="Study"&year==2016]),Value_2017=sum(installcost[evaluationdescription=="Study"&year==2017]),
+  Value_2018=sum(installcost[evaluationdescription=="Study"&year==2018]),Total_Value=sum(installcost[evaluationdescription=="Study"]),
+  non_ATAC_measures=sum(evaluationdescription!="Study"))
 
-ATAC_Con_out<-ATAC_And %>% filter(ATAC_studies>0) %>% group_by(installercompanyname) %>% summarise(total_projects=n_distinct(projectid), total_measures=sum(n_total_measures),total_ATAC_studies=sum(ATAC_studies),total_ATAC_values=sum(ATAC_value),total_non_ATAC=sum(non_ATAC_measures))
+# ATAC_Con_out<-ATAC_And %>% filter(ATAC_studies>0) %>% group_by(installercompanyname) %>% summarise(total_projects=n_distinct(projectid), total_measures=sum(n_total_measures),ATAC_2016=sum(ATAC_studies[years]),ATAC_2017=sum(),ATAC_2018=sum(),total_ATAC_studies=sum(ATAC_studies),total_ATAC_values=sum(ATAC_value),total_non_ATAC=sum(non_ATAC_measures))
 # write.csv(ATAC_Con_out,"~/desktop/ATAC_Summary.csv",row.names = FALSE)
 
