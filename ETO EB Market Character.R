@@ -12,7 +12,7 @@ Mode <- function(x) {
 population2<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Eligible Commercial Sites.csv",stringsAsFactors = FALSE)
 projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Projects.csv",stringsAsFactors = FALSE)
 contacts<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Contacts.csv",stringsAsFactors = FALSE)
-counties<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Oregon and SW Washington zip codes.csv",stringsAsFactors = FALSE)
+counties<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Oregon and SW Washington zip codes.csv",stringsAsFactors = FALSE) %>% group_by(Zip.Code) %>% summarise(County=unique(County))
 regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
 industries<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Employment by Industry.csv",stringsAsFactors = FALSE)
 sector_groups<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB market sector categories.csv",stringsAsFactors = FALSE) %>% select(et_marketname,Evergreen.categories)
@@ -179,7 +179,8 @@ State_adj<-full_join(pop_by_naics,IndAgg,by="naicsgroup") %>% mutate(adj=Units/i
 State_adj$adj[is.na(State_adj$adj)]<-1
 
 # adjusted plots
-characterization_adj<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(kwh2017,na.rm = TRUE),Therms=sum(therms2017,na.rm = TRUE)) %>% left_join(State_adj,by="naicsgroup") %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n*adj),2)) %>% 
+characterization_adj<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(kwh2017,na.rm = TRUE),Therms=sum(therms2017,na.rm = TRUE)) %>% 
+  left_join(State_adj,by="naicsgroup") %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n*adj),2)) %>% 
   arrange(participation,naicsgroup)
 
 characterization_adj$kWh_adj<-characterization_adj$kWh*ifelse(characterization_adj$participation=="Participant",1,characterization_adj$adj)
