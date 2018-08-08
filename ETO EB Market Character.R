@@ -19,7 +19,7 @@ sector_groups<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/
 
 population<-population2 %>% left_join(sector_groups,by=c("market"="et_marketname"))
 
-# assign NAICS group
+# assign NAICS group to population
 population$naics_code_group<-"Unknown"
 population$naics_code_group[substr(population$naics_code,1,2)==11]<-"Industrial"
 population$naics_code_group[substr(population$naics_code,1,2)==21]<-"Industrial"
@@ -32,17 +32,19 @@ population$naics_code_group[substr(population$naics_code,1,2)==45]<-"Retail"
 population$naics_code_group[substr(population$naics_code,1,2)==48]<-"Warehouse"
 population$naics_code_group[substr(population$naics_code,1,2)==49]<-"Warehouse"
 population$naics_code_group[substr(population$naics_code,1,1)==5]<-"Office"
-population$naics_code_group[substr(population$naics_code,1,2)==61]<-"School"
+population$naics_code_group[substr(population$naics_code,1,4)==6111]<-"School K-12"
+population$naics_code_group[substr(population$naics_code,1,2)==61&substr(population$naics_code,1,4)!=6111]<-"Higher Education"
 population$naics_code_group[substr(population$naics_code,1,2)==71]<-"Recreation"
 population$naics_code_group[substr(population$naics_code,1,1)==3]<-"Industrial"
-population$naics_code_group[substr(population$naics_code,1,2)==62]<-"Medical"
-population$naics_code_group[substr(population$naics_code,1,3)==721]<-"Hotel"
+population$naics_code_group[substr(population$naics_code,1,2)==62]<-"Healthcare"
+population$naics_code_group[substr(population$naics_code,1,3)==721]<-"Hospitality"
 population$naics_code_group[substr(population$naics_code,1,3)==722]<-"Restaurant"
 population$naics_code_group[substr(population$naics_code,1,3)==811]<-"Repair"
 population$naics_code_group[substr(population$naics_code,1,3)==812]<-"Repair"
 population$naics_code_group[substr(population$naics_code,1,3)==813]<-"Religious"
-population$naics_code_group[substr(population$naics_code,1,2)==92]<-"Public"
-table(population$naics_code_group)
+population$naics_code_group[substr(population$naics_code,1,2)==92]<-"Government"
+population$naics_code_group[substr(population$naics_code,1,4)==8123]<-"Laundry/Dry Cleaner"
+table(population$naics_code_group,exclude = NULL)
 
 population$naicsgroup<-population$Evergreen.categories
 population$naicsgroup[population$naicsgroup=="Residential -- we'll probably want to exclude this"|is.na(population$naicsgroup)]<-"Unknown"
@@ -102,7 +104,8 @@ table(population$participation,population$participanttype)
 population$participation<-ifelse(population$participation,"Participant","Non-Participant")
 
 # output
-characterization<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(as.numeric(kwh2017),na.rm = TRUE),Therms=sum(as.numeric(therms2017),na.rm = TRUE)) %>% group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n),2),pctkWh=round(kWh/sum(kWh),2),pctTherms=round(Therms/sum(Therms),2)) %>% 
+characterization<-population %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(as.numeric(kwh2017),na.rm = TRUE),Therms=sum(as.numeric(therms2017),na.rm = TRUE)) %>%
+  group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n),2),pctkWh=round(kWh/sum(kWh),2),pctTherms=round(Therms/sum(Therms),2)) %>% 
   arrange(participation,naicsgroup)
 
 ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
@@ -118,13 +121,13 @@ ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
 ggplot(characterization %>% filter(participation=="Participant"))+
   theme(axis.text.x = element_text(angle = 90))+
   geom_bar(stat = "identity",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,fill=naicsgroup))+
-  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=8))+
+  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=9))+
   theme(legend.position = "none")
 
 ggplot(characterization %>% filter(participation=="Participant"))+
   geom_bin2d(aes(x=naicsgroup,y=fuel_size,fill=pct))+
   theme(axis.text.x = element_text(angle = 90))+
-  scale_fill_continuous(high="#008c00",low="#ff0000")
+  scale_fill_gradient2(high = "red",low="green",mid="yellow",na.value = "white",midpoint = .5,limits=c(0,1))
 
 ggplot(characterization)+
   geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=kWh,fill=participation))+
@@ -151,22 +154,24 @@ industries$naicsgroup[substr(industries$Naics,1,2)==22]<-"Industrial"
 industries$naicsgroup[substr(industries$Naics,1,2)==23]<-"Industrial"
 industries$naicsgroup[substr(industries$Naics,1,2)==42]<-"Retail"
 industries$naicsgroup[substr(industries$Naics,1,2)==44]<-"Retail"
+industries$naicsgroup[substr(industries$Naics,1,3)==445]<-"Grocery"
 industries$naicsgroup[substr(industries$Naics,1,2)==45]<-"Retail"
 industries$naicsgroup[substr(industries$Naics,1,2)==48]<-"Warehouse"
 industries$naicsgroup[substr(industries$Naics,1,2)==49]<-"Warehouse"
 industries$naicsgroup[substr(industries$Naics,1,1)==5]<-"Office"
-industries$naicsgroup[substr(industries$Naics,1,2)==61]<-"School"
+industries$naicsgroup[substr(industries$Naics,1,4)==6111]<-"School K-12"
+industries$naicsgroup[substr(industries$Naics,1,2)==61&substr(industries$Naics,1,4)!=6111]<-"Higher Education"
 industries$naicsgroup[substr(industries$Naics,1,2)==71]<-"Recreation"
 industries$naicsgroup[substr(industries$Naics,1,1)==3]<-"Industrial"
-industries$naicsgroup[substr(industries$Naics,1,2)==62]<-"Medical"
-industries$naicsgroup[substr(industries$Naics,1,3)==721]<-"Hotel"
+industries$naicsgroup[substr(industries$Naics,1,2)==62]<-"Healthcare"
+industries$naicsgroup[substr(industries$Naics,1,3)==721]<-"Hospitality"
 industries$naicsgroup[substr(industries$Naics,1,3)==722]<-"Restaurant"
 industries$naicsgroup[substr(industries$Naics,1,3)==811]<-"Repair"
 industries$naicsgroup[substr(industries$Naics,1,3)==812]<-"Repair"
 industries$naicsgroup[substr(industries$Naics,1,3)==813]<-"Religious"
-industries$naicsgroup[substr(industries$Naics,1,2)==92]<-"Public"
-industries$naicsgroup[substr(industries$Naics,1,3)==814]<-"Private Households"
-table(industries$naicsgroup)
+industries$naicsgroup[substr(industries$Naics,1,2)==92]<-"Government"
+industries$naicsgroup[substr(industries$Naics,1,4)==8123]<-"Laundry/Dry Cleaner"
+table(industries$naicsgroup,exclude = NULL)
 
 pop_by_naics<-population %>% group_by(naicsgroup) %>% summarise(in_eto=n())
 IndAgg<-industries %>% group_by(naicsgroup) %>% summarise(Units=sum(as.numeric(gsub(",","",Units))))
@@ -189,14 +194,14 @@ ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!=
 ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
   theme(axis.text.x = element_text(angle = 90))+
   geom_bar(stat = "identity",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=pct,fill=naicsgroup))+
-  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=7))+
+  scale_fill_manual(values=rep(c("#ffb13d","#3e9933"),times=8))+
   theme(legend.position = "none")+
   geom_hline(aes(yintercept=weighted.mean(avg_pct)))
 
 ggplot(characterization_adj %>% filter(participation=="Participant"&naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
   geom_bin2d(aes(x=naicsgroup,y=fuel_size,fill=pct))+
   theme(axis.text.x = element_text(angle = 90))+
-  scale_fill_gradient2(high="#008c00",low="#ff0000",midpoint=.5,mid="yellow")
+  scale_fill_gradient2(high="green",low="red",midpoint=.5,mid="yellow")
 
 ggplot(characterization_adj%>% filter(naicsgroup!="Multifamily/Residential"&naicsgroup!="Unknown Commercial"))+
   geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=kWh_adj,fill=participation))+
