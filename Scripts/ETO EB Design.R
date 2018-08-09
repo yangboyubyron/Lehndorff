@@ -298,12 +298,31 @@ ATAC_Summary<-Has_ATAC %>% group_by(year) %>% summarise(n_proj=n_distinct(projec
 # ATAC_And<-projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(projectid,installercompanyname) %>% summarise(years=n_distinct(year),n_total_measures=n(),ATAC_studies=sum(evaluationdescription=="Study"),ATAC_value=sum(installcost[evaluationdescription=="Study"]),non_ATAC_measures=sum(evaluationdescription!="Study"))
 # mean(ATAC_And$non_ATAC_measures>0)
 
-ATAC_Con_out <- projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(installercompanyname) %>% summarise(ATAC_2016=n_distinct(projectid[evaluationdescription=="Study"&year==2016]),ATAC_2017=n_distinct(projectid[evaluationdescription=="Study"&year==2017]),
+ATAC_out <- projects %>% filter(projectid%in%Has_ATAC$projectid) %>% group_by(installercompanyname) %>% summarise(ATAC_2016=n_distinct(projectid[evaluationdescription=="Study"&year==2016]),ATAC_2017=n_distinct(projectid[evaluationdescription=="Study"&year==2017]),
   ATAC_2018=n_distinct(projectid[evaluationdescription=="Study"&year==2018]),Total_ATAC=n_distinct(projectid[evaluationdescription=="Study"]),
   Value_2016=sum(installcost[evaluationdescription=="Study"&year==2016]),Value_2017=sum(installcost[evaluationdescription=="Study"&year==2017]),
   Value_2018=sum(installcost[evaluationdescription=="Study"&year==2018]),Total_Value=sum(installcost[evaluationdescription=="Study"]),
   non_ATAC_measures=sum(evaluationdescription!="Study"))
 
+ATAC_out$merge<-tolower(gsub("[[:punct:]]|[[:space:]]","",substr(ATAC_out$installercompanyname,1,11)))
+ATAC_out$merge[ATAC_out$installercompanyname=="Mazzetti, Inc."]<-"mazzetti"
+ATAC_out$merge[ATAC_out$installercompanyname=="Northwest Engineering Services, Inc."]<-"nwesi"
+ATAC_out$merge[ATAC_out$installercompanyname=="Nexant, Inc."]<-"nexant"
+ATAC_out$merge[ATAC_out$installercompanyname=="PlanB Consultancy Inc"]<-"planb"
+ATAC_out$merge[ATAC_out$installercompanyname=="SOLARC Architecture Inc"]<-"solarc"
+ATAC_out$merge[ATAC_out$installercompanyname=="Siemens Industry INC"]<-"siemensbui"
+ATAC_out$merge[ATAC_out$installercompanyname=="Trane U.S. Inc"]<-"traneusin"
+
+ATAC_Con<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ATAC Contact List.csv",stringsAsFactors = FALSE)
+ATAC_Con$merge<-tolower(gsub("[[:punct:]]|[[:space:]]","",substr(ATAC_Con$Company,1,11)))
+
+non_match<-c(ATAC_Con$merge[!ATAC_Con$merge%in%ATAC_out$merge],ATAC_out$merge[!ATAC_out$merge%in%ATAC_Con$merge]) %>% sort()
+
+table(ATAC_Con$merge%in%ATAC_out$merge)
+table(ATAC_out$merge%in%ATAC_Con$merge)
+
+ATAC_Con_out<-inner_join(ATAC_out,ATAC_Con,by="merge") %>% select(-merge)
+
 # ATAC_Con_out<-ATAC_And %>% filter(ATAC_studies>0) %>% group_by(installercompanyname) %>% summarise(total_projects=n_distinct(projectid), total_measures=sum(n_total_measures),ATAC_2016=sum(ATAC_studies[years]),ATAC_2017=sum(),ATAC_2018=sum(),total_ATAC_studies=sum(ATAC_studies),total_ATAC_values=sum(ATAC_value),total_non_ATAC=sum(non_ATAC_measures))
-# write.csv(ATAC_Con_out,"~/desktop/ATAC_Summary.csv",row.names = FALSE)
+# write.csv(ATAC_Con_out,"~/desktop/ATAC_Frame.csv",row.names = FALSE)
 
