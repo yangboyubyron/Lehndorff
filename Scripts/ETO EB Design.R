@@ -15,6 +15,7 @@ impact_surv<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB
 SEM<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/SEM impact data/SEM and Capital Participation Data to Evergreen.csv",stringsAsFactors = FALSE)
 sector_groups<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB market sector categories.csv",stringsAsFactors = FALSE) %>% select(et_marketname,Evergreen.categories)
 impact_include<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Include from impact.csv",stringsAsFactors = FALSE)
+regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
 
 # assign NAICS group to population
 population$naicsgroup<-"Unknown"
@@ -70,7 +71,14 @@ projects$trackval[projects$trackval==1&!projects$confrim_SEM]<-1000
 
 projects$impact_survey<-projects$projectid%in%impact_surv$projectid
 
-Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% summarise(n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE))
+# Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% summarise(n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE))
+Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% arrange(desc(date)) %>% 
+  summarise(Project_Name=first(projecttitle),Project_Address=first(et_streetaddress),numb_projects=n_distinct(projectid),proj_date=first(date),n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),
+    past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE),
+    county=first(et_county),sqft=first(sqft),units=first(numberofunits),floors=first(numberoffloors),yearbuilt=first(yearbuilt),rental=first(rentalindicator)) %>% 
+  left_join(select(regions,-Trade.Ally.Region),by=c("county"="County")) %>% 
+  left_join(select(population,c(et_siteid,kwh2017,therms2017)),by="et_siteid")
+
 Parts$segment<-paste(Parts$recent_group,"R",sep = "-")
 Parts$segment[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000]<-paste(Parts$past_group[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000],"P",sep="-")
 
@@ -155,7 +163,8 @@ j<-0
 for (i in unique(PartFrame_dedupe$segment)){
   if(WRITE!=TRUE){break}
   j<-j+1
-  frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","segment","any_impact","n_sectors","most_common_sector","n_measures","total_incent","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email") %>% data.frame()
+  # frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","segment","any_impact","n_sectors","most_common_sector","n_measures","total_incent","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email") %>% data.frame()
+  frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","Project_Name","Project_Address","proj_date","numb_projects","segment","kwh2017","therms2017","Regions.for.EB.Process","sector","n_sectors","most_common_sector","n_measures","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email","sqft","yearbuilt","units","floors","rental") %>% data.frame()
   if(j==1){
     write.xlsx(frameout,"/Users/Lehndorff/desktop/Part_Frame.xlsx",append = FALSE,sheetName = i,row.names = FALSE)
   }else{
