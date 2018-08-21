@@ -172,7 +172,8 @@ ggplot(population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/
   scale_fill_manual(values = EEcolors4)+
   facet_grid(participation~.)+
   coord_flip()+
-  labs(title="Summary of total commercial building/customers by sector (unadjusted)",y="Count of Customers",x="Business Sector",fill="Customer Size")
+  theme_minimal()+
+  labs(y="Count of Customers",x="Business Sector",fill="Customer Size")
 
 ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -268,7 +269,8 @@ ggplot(counts_adj %>% ungroup())+
   scale_fill_manual(values = EEcolors4)+
   facet_grid(participation~.)+
   coord_flip()+
-  labs(title="Summary of total commercial sites/customers by sector (adjusted)",y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
+  theme_minimal()+
+  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
 
 ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -278,7 +280,8 @@ ggplot(counts_adj %>% ungroup())+
   geom_bar(stat="identity",position = "fill",aes(x=factor(naicsgroup,levels = NAICS_levels),y=count_adj,fill=factor(fuel_part,levels = fuel_part_levels)))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
-  labs(title="Proportion of program participation by market sector - # of sites",y="Proportion of Customers",x="Business Sector",fill="Customer Size / Participation")
+  theme_minimal()+
+  labs(y="Proportion of Customers",x="Business Sector",fill="Customer Size / Participation")
 
 ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -288,7 +291,8 @@ ggplot(counts_adj_track %>% ungroup())+
   geom_bar(stat="identity",position = "fill",aes(x=factor(naicsgroup,levels = NAICS_levels),y=count_adj,fill=factor(track,levels = track_levels)))+
   scale_fill_manual(values = EEcolors7)+
   coord_flip()+
-  labs(title="Proportion of program participation by market sector and program track",y="Proportion of Customers",x="Business Sector",fill="Program Track")
+  theme_minimal()+
+  labs(y="Proportion of Customers",x="Business Sector",fill="Program Track")
 
 ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -298,7 +302,8 @@ ggplot(counts_reg %>% filter(!is.na(Region)) %>% ungroup())+
   geom_bar(stat="identity",position = "fill",aes(x=Region,y=count,fill=factor(track,levels = track_levels)))+
   scale_fill_manual(values = EEcolors7)+
   coord_flip()+
-  labs(title="Proportion of program participation by region and program track",x="Region",y="Proportion of Customers",fill="Program Track")
+  theme_minimal()+
+  labs(x="Region",y="Proportion of Customers",fill="Program Track")
 
 ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -322,7 +327,8 @@ ggplot(characterization_adj_kwh %>% ungroup())+
   scale_fill_manual(values = EEcolors5)+
   geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text,label=count_adj))+
   coord_flip()+
-  labs(title="Summary of commercial customers by kWh usage",y="Adjusted kWh",x="Business Sector",fill="Customer Size / Participation")
+  theme_minimal()+
+  labs(y="Adjusted kWh",x="Business Sector",fill="Customer Size / Participation")
 
 ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -331,7 +337,8 @@ ggplot(characterization_adj_kwh %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj,fill=factor(fuel_part,fuel_part_levels2)))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
-  labs(title="Proportion of program participation by market sector - kWh usage",y="Proportion of kWh",x="Business Sector",fill="Customer Size / Participation")
+  theme_minimal()+
+  labs(y="Proportion of kWh",x="Business Sector",fill="Customer Size / Participation")
 
 ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -356,7 +363,8 @@ ggplot(characterization_adj_therms %>% ungroup())+
   scale_fill_manual(values = EEcolors5)+
   geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text,label=count_adj))+
   coord_flip()+
-  labs(title="Summary of commercial customer by therm usage",y="Adjusted Therms",x="Business Sector",fill="Customer Size / Participation")
+  theme_minimal()+
+  labs(y="Adjusted Therms",x="Business Sector",fill="Customer Size / Participation")
 
 ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
@@ -365,7 +373,8 @@ ggplot(characterization_adj_therms %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj,fill=factor(fuel_part,fuel_part_levels2)))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
-  labs(title="Proportion of program participation by market sector - gas usage",y="Proportion of Therms",x="Business Sector",fill="Customer Size / Participation")
+  theme_minimal()+
+  labs(y="Proportion of Therms",x="Business Sector",fill="Customer Size / Participation")
 
 ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
 
