@@ -20,7 +20,7 @@ SEM<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/SEM impact
 
 population<-population2 %>% left_join(sector_groups,by=c("market"="et_marketname"))
 
-EEcolors7<- c("#73B633","#CECECE","#095C9C","#5EBCDF","#2F2860","#FABC2B","#BBECCA")
+EEcolors7<- c("#73B633","#2F2860","#095C9C","#5EBCDF","#C1C1C1","#FABC2B","#BBECCA")
 EEcolors4<-EEcolors7[2:5]
 EEcolors5<-EEcolors7[1:5]
 
@@ -105,6 +105,8 @@ table(population$Region,exclude = NULL)
 
 test<-subset(population, is.na(Region))
 
+region_levels<-c("Portland Metro","Northwest Oregon","Central Oregon","Southern Oregon","Eastern Oregon","Southwest Washington")
+
 # Participation
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
 
@@ -135,7 +137,7 @@ table(projects$trackval,projects$confrim_SEM)
 
 projects$trackval[projects$trackval==1&!projects$confrim_SEM]<-1000
 
-Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% arrange(desc(date)) %>% summarise(track=min(trackval))
+Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% arrange(desc(date)) %>% summarise(track=min(trackval),date=max(date))
 
 zzz<-population
 
@@ -154,6 +156,14 @@ table(population$track,population$participation,exclude = NULL)
 
 track_levels<-c("Non-Participant","SEM","Custom","DI","Standard","Lighting","Other")
 
+population$recent_part<-"Non-Participant"
+population$recent_part[population$date>="2017-01-01"&!is.na(population$date)]<-"Recent Participant"
+population$recent_part[population$date<"2017-01-01"&!is.na(population$date)]<-"Past Participant"
+
+table(population$recent_part)
+
+recent_levels<-c("Non-Participant","Recent Participant","Past Participant")
+
 # output
 # characterization<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(fuel_size,naicsgroup,participation) %>% summarise(n=n(),kWh=sum(as.numeric(kwh2017),na.rm = TRUE),Therms=sum(as.numeric(therms2017),na.rm = TRUE)) %>%
 #   group_by(fuel_size,naicsgroup) %>% mutate(pct=round(n/sum(n),2),pctkWh=round(kWh/sum(kWh),2),pctTherms=round(Therms/sum(Therms),2)) %>% 
@@ -161,21 +171,24 @@ track_levels<-c("Non-Participant","SEM","Custom","DI","Standard","Lighting","Oth
 
 population$fuel_part<-paste(population$fuel_size,population$participation)
 
-NAICS_levels<-rev(c("Government","Grocery","Healthcare","Higher Education","Hospitality","Industrial","Laundry/Dry Cleaner","Multifamily",
-    "Multifamily/Residential", "Office", "Recreation", "Religious","Repair","Restaurant","Retail","School K-12","Warehouse","Unknown Commercial"))
+NAICS_levels<-rev(c("Government","Grocery","Healthcare","Hospitality","Industrial","Laundry/Dry Cleaner","Multifamily",
+    "Multifamily/Residential", "Office", "Recreation", "Religious","Repair","Restaurant","Retail","School K-12","Higher Education","Warehouse","Unknown Commercial"))
 
 Size_levels<-rev(c("Unknown","Small","Medium","Large"))
 
 # •	Summary of total commercial building/customers by sector (unadjusted)
 ggplot(population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential"))+
+  # geom_bar(position="identity",aes(x=factor(gsub(" ","\n",naicsgroup),levels = gsub(" ","\n", NAICS_levels)),fill=factor(fuel_size,levels = Size_levels)))+
   geom_bar(position="identity",aes(x=factor(naicsgroup,levels = NAICS_levels),fill=factor(fuel_size,levels = Size_levels)))+
   scale_fill_manual(values = EEcolors4)+
   facet_grid(participation~.)+
   coord_flip()+
   theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank(),axis.text.y = )+
+  scale_y_continuous(labels = scales::comma)+
   labs(y="Count of Customers",x="Business Sector",fill="Customer Size")
 
-ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
 #   geom_bar(position = "fill",aes(x=naicsgroup,fill=fuel_size))+
@@ -270,9 +283,11 @@ ggplot(counts_adj %>% ungroup())+
   facet_grid(participation~.)+
   coord_flip()+
   theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  scale_y_continuous(labels = scales::comma)+
   labs(y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 
 #•	Proportion of program participation by market sector - # of sites
@@ -281,9 +296,10 @@ ggplot(counts_adj %>% ungroup())+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
   theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of Customers",x="Business Sector",fill="Customer Size / Participation")
 
-ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # by sector and track %
 # •	Proportion of program participation by market sector and program track 
@@ -292,21 +308,40 @@ ggplot(counts_adj_track %>% ungroup())+
   scale_fill_manual(values = EEcolors7)+
   coord_flip()+
   theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of Customers",x="Business Sector",fill="Program Track")
 
-ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # by region and track %
 # •	Proportion of program participation by region and program track 
 ggplot(counts_reg %>% filter(!is.na(Region)) %>% ungroup())+
-  geom_bar(stat="identity",position = "fill",aes(x=Region,y=count,fill=factor(track,levels = track_levels)))+
+  geom_bar(stat="identity",position = "fill",aes(x=factor(gsub(" ","\n",Region),rev(gsub(" ","\n",region_levels))),y=count,fill=factor(track,levels = track_levels)))+
   scale_fill_manual(values = EEcolors7)+
   coord_flip()+
   theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(x="Region",y="Proportion of Customers",fill="Program Track")
 
-ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
+# by sector and participant date
+# •	stacked adj count sector / participation date
+counts_adj_part<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(recent_part,naicsgroup) %>% summarise(n=n()) %>% 
+  left_join(State_adj,by="naicsgroup") %>% ungroup() %>% mutate(count_adj=ifelse(recent_part=="Non-Participant",round(n*adj),n))
+
+ggplot(counts_adj_part %>% ungroup())+
+  geom_bar(stat="identity",aes(x=factor(naicsgroup,levels = NAICS_levels),y=count_adj,fill=factor(recent_part,levels = recent_levels)))+
+  scale_fill_manual(values = EEcolors5)+
+  coord_flip()+
+  theme_minimal()+
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  scale_y_continuous(labels = scales::comma)+
+  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Participation Recency")
+
+ggsave("adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+
+# 
 fuel_part_levels2<-c("Non-Participant","Large Participant","Medium Participant","Small Participant","Unknown Size Participant")
 
 ##kwh by bus type
@@ -316,31 +351,41 @@ characterization_adj_kwh<-population %>% filter(naicsgroup!="Multifamily"&naicsg
 
 characterization_reg_kwh<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(elec_fuel_size,Region,participation) %>% summarise(n=n(),kwh=sum(as.numeric(kwh2017),na.rm = TRUE)) %>% 
   mutate(fuel_part=ifelse(participation=="Non-Participant","Non-Participant",paste(elec_fuel_size,participation))) #%>% 
-  group_by(naicsgroup,fuel_part) %>% arrange(naicsgroup,desc(fuel_part)) %>% summarise(kwh_adj=sum(kwh_adj),count_adj=sum(count_adj)) %>% group_by(naicsgroup) %>% arrange(desc(factor(fuel_part,levels = fuel_part_levels2))) %>% mutate(text=cumsum(kwh_adj)+1.5e8)
+  # group_by(naicsgroup,fuel_part) %>% arrange(naicsgroup,desc(fuel_part)) %>% summarise(kwh_adj=sum(kwh_adj),count_adj=sum(count_adj)) %>% group_by(naicsgroup) %>% arrange(desc(factor(fuel_part,levels = fuel_part_levels2))) %>% mutate(text=cumsum(kwh_adj)+1.5e8)
 
-characterization_adj_kwh$count_adj[characterization_adj_kwh$fuel_part!="Non-Participant"]<-""
+characterization_recent_kwh<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(recent_part,naicsgroup,participation) %>% summarise(n=n(),kwh=sum(as.numeric(kwh2017),na.rm = TRUE)) %>% 
+  left_join(State_adj,by="naicsgroup") %>% ungroup() %>% mutate(count_adj=ifelse(recent_part=="Non-Participant",round(n*adj),n),kwh_adj=ifelse(recent_part=="Non-Participant",kwh*adj,kwh)) %>% 
+  group_by(naicsgroup,recent_part) %>% arrange(naicsgroup,desc(recent_part)) %>% summarise(kwh_adj=sum(kwh_adj),count_adj=sum(count_adj)) %>% group_by(naicsgroup) %>% arrange(desc(factor(recent_part,levels = recent_levels))) %>% mutate(text=cumsum(kwh_adj)+2e8)
 
+characterization_recent_kwh$count_adj<-format(characterization_recent_kwh$count_adj,big.mark = ",",format="d")
+characterization_recent_kwh$count_adj[characterization_recent_kwh$recent_part!="Non-Participant"]<-""
+
+characterization_recent_kwh$text[characterization_recent_kwh$kwh_adj>600000000&characterization_recent_kwh$count_adj!=""]<-
+  characterization_recent_kwh$text[characterization_recent_kwh$kwh_adj>600000000&characterization_recent_kwh$count_adj!=""]-4.5e8
 
 # •	Summary of commercial customers by kWh usage
-ggplot(characterization_adj_kwh %>% ungroup())+
-  geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj,fill=factor(fuel_part,fuel_part_levels2)))+
-  scale_fill_manual(values = EEcolors5)+
-  geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text,label=count_adj))+
+ggplot(characterization_recent_kwh %>% ungroup())+
+  geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj/1e6,fill=factor(recent_part,recent_levels)))+
+  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant (count)","Recent Participant","Past Participant"))+
+  geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text/1e6,label=count_adj))+
   coord_flip()+
   theme_minimal()+
-  labs(y="Adjusted kWh",x="Business Sector",fill="Customer Size / Participation")
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  scale_y_continuous(labels = scales::comma)+
+  labs(y="Adjusted GWh Usage and Count of Non-Participants",x="Business Sector",fill="Participation Recency")
 
-ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # •	Proportion of program participation by market sector - kWh usage
-ggplot(characterization_adj_kwh %>% ungroup())+
+ggplot(characterization_adj_kwh %>% filter(fuel_part!="Unknown Size Participant") %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj,fill=factor(fuel_part,fuel_part_levels2)))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
   theme_minimal()+
-  labs(y="Proportion of kWh",x="Business Sector",fill="Customer Size / Participation")
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  labs(y="Proportion of kWh Usage",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 ggplot(characterization_reg_kwh %>% filter(!is.na(Region)) %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=Region,y=kwh,fill=factor(fuel_part,fuel_part_levels2)))+
@@ -355,28 +400,38 @@ characterization_reg_therms<-population %>% filter(naicsgroup!="Multifamily"&nai
   mutate(fuel_part=ifelse(participation=="Non-Participant","Non-Participant",paste(gas_fuel_size,participation))) #%>% 
   group_by(naicsgroup,fuel_part) %>% arrange(naicsgroup,desc(fuel_part)) %>% summarise(therms_adj=sum(therms_adj),count_adj=sum(count_adj)) %>% group_by(naicsgroup) %>% arrange(desc(factor(fuel_part,levels = fuel_part_levels2))) %>% mutate(text=cumsum(therms_adj)+4.25e6)
 
-characterization_adj_therms$count_adj[characterization_adj_therms$fuel_part!="Non-Participant"]<-""
+characterization_recent_therms<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(recent_part,naicsgroup) %>% summarise(n=n(),therms=sum(therms2017,na.rm = TRUE)) %>% 
+  left_join(State_adj,by="naicsgroup") %>% ungroup() %>% mutate(count_adj=ifelse(recent_part=="Non-Participant",round(n*adj),n),therms_adj=ifelse(recent_part=="Non-Participant",therms*adj,therms)) %>% 
+  group_by(naicsgroup,recent_part) %>% arrange(naicsgroup,desc(recent_part)) %>% summarise(therms_adj=sum(therms_adj),count_adj=sum(count_adj)) %>% group_by(naicsgroup) %>% arrange(desc(factor(recent_part,levels = recent_levels))) %>% mutate(text=cumsum(therms_adj)+4e6)
 
+characterization_recent_therms$count_adj<-format(characterization_recent_therms$count_adj,big.mark = ",",format="d")
+characterization_recent_therms$count_adj[characterization_recent_therms$recent_part!="Non-Participant"]<-""
+
+characterization_recent_therms$text[characterization_recent_therms$therms_adj>20000000&characterization_recent_therms$count_adj!=""]<-
+  characterization_recent_therms$text[characterization_recent_therms$therms_adj>20000000&characterization_recent_therms$count_adj!=""]-8.5e6
+  
 # •	Summary of commercial customer by therm usage
-ggplot(characterization_adj_therms %>% ungroup())+
-  geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj,fill=factor(fuel_part,fuel_part_levels2)))+
-  scale_fill_manual(values = EEcolors5)+
-  geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text,label=count_adj))+
+ggplot(characterization_recent_therms %>% ungroup())+
+  geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj/1e6,fill=factor(recent_part,recent_levels)))+
+  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant (count)","Recent Participant","Past Participant"))+
+  geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text/1e6,label=count_adj))+
   coord_flip()+
   theme_minimal()+
-  labs(y="Adjusted Therms",x="Business Sector",fill="Customer Size / Participation")
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  labs(y="Adjusted Therms Usage (millions) and Count of Non-Participants",x="Business Sector",fill="Participation Recency")
 
-ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # •	Proportion of program participation by market sector - gas usage
-ggplot(characterization_adj_therms %>% ungroup())+
+ggplot(characterization_adj_therms %>% filter(fuel_part!="Unknown Size Participant") %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj,fill=factor(fuel_part,fuel_part_levels2)))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
   theme_minimal()+
-  labs(y="Proportion of Therms",x="Business Sector",fill="Customer Size / Participation")
+  theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
+  labs(y="Proportion of Therms Usage",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/")
+ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 ggplot(characterization_reg_therms %>% filter(!is.na(Region)) %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=Region,y=therms,fill=factor(fuel_part,fuel_part_levels2)))+
