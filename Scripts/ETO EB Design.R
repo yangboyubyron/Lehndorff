@@ -15,6 +15,7 @@ impact_surv<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB
 SEM<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/SEM impact data/SEM and Capital Participation Data to Evergreen.csv",stringsAsFactors = FALSE)
 sector_groups<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB market sector categories.csv",stringsAsFactors = FALSE) %>% select(et_marketname,Evergreen.categories)
 impact_include<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Include from impact.csv",stringsAsFactors = FALSE)
+counties<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Oregon and SW Washington zip codes.csv",stringsAsFactors = FALSE) %>% group_by(Zip.Code) %>% summarise(County=unique(County))
 regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
 
 # assign NAICS group to population
@@ -242,8 +243,10 @@ NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha
 # write out frame by naics group
 
 
-# Contractors
+# Contractor summary
 trade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Trade Allies for Process Eval.csv",stringsAsFactors = FALSE)
+nontrade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB Contractor Contact Info.csv",stringsAsFactors = FALSE)
+
 trade$actval<-5
 trade$actval[trade$activity=="Inactive"]<-4
 trade$actval[trade$activity=="Low Activity"]<-3
@@ -334,4 +337,60 @@ ATAC_Con_out<-inner_join(ATAC_out,ATAC_Con,by="merge") %>% select(-merge)
 
 # ATAC_Con_out<-ATAC_And %>% filter(ATAC_studies>0) %>% group_by(installercompanyname) %>% summarise(total_projects=n_distinct(projectid), total_measures=sum(n_total_measures),ATAC_2016=sum(ATAC_studies[years]),ATAC_2017=sum(),ATAC_2018=sum(),total_ATAC_studies=sum(ATAC_studies),total_ATAC_values=sum(ATAC_value),total_non_ATAC=sum(non_ATAC_measures))
 # write.csv(ATAC_Con_out,"~/desktop/ATAC_Frame.csv",row.names = FALSE)
+
+# Contractor Frame
+trade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Trade Allies for Process Eval.csv",stringsAsFactors = FALSE)
+trade_con<-trade %>% 
+  filter(Phone!="NULL"&EBProcessFlag==1) %>% 
+  group_by(Account=AccountNumber,Company=TradeAllyName) %>% 
+  mutate(order=1:n()) %>% 
+  summarise(n=n(),Contact_Name=ContactName[order==1],Contact_Phone=Phone[order==1],Contact_Email=Email[order==1],
+    Contact_2=ifelse(n>1,ContactName[order==2],"None"),Phone_2=ifelse(n>1,Phone[order==2],"None"),Email_2=ifelse(n>1,Email[order==2],"None"),
+    priority=1,Ally="Trade Ally" ,Activity=unique(activity),Enrollment=unique(Program.Enrollments))
+
+nontrade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/EB Contractor Contact Info.csv",stringsAsFactors = FALSE)
+nontrade$Use_phone<-NA
+nontrade$Use_phone[nontrade$ContactHomePhone!=""]<-nontrade$ContactHomePhone[nontrade$ContactHomePhone!=""]
+nontrade$Use_phone[nontrade$ContactMobilePhone!=""&is.na(nontrade$Use_phone)]<-nontrade$ContactMobilePhone[nontrade$ContactMobilePhone!=""&is.na(nontrade$Use_phone)]
+nontrade$Use_phone[nontrade$ContactHomePhone!=""&is.na(nontrade$Use_phone)]<-nontrade$ContactHomePhone[nontrade$ContactHomePhone!=""&is.na(nontrade$Use_phone)]
+nontrade$Use_phone[nontrade$CompanyPhone!=""&is.na(nontrade$Use_phone)]<-nontrade$CompanyPhone[nontrade$CompanyPhone!=""&is.na(nontrade$Use_phone)]
+
+nontrade_con<-nontrade %>%
+  filter(contactinfo==1&!is.na(Use_phone)) %>% 
+  arrange(desc(ContactFirstName)) %>% 
+  group_by(Account=accountnumber,Company=CompanyName) %>% 
+  mutate(order=1:n()) %>%
+  summarise(n=n(),Contact_Name=paste(ContactFirstName,ContactLastName,sep=" ")[order==1],Contact_Phone=Use_phone[order==1],Contact_Email=ContactEmail[order==1],
+    Contact_2=ifelse(n>1,paste(ContactFirstName,ContactLastName,sep=" ")[order==2],"None"),Phone_2=ifelse(n>1,Use_phone[order==2],"None"),Email_2=ifelse(n>1,ContactEmail[order==2],"None"),
+    priority=2, Ally="Non-Trade Ally",Activity="Unknown",Enrollment="None")
+
+cont_con_full<-bind_rows(trade_con,nontrade_con) %>% group_by(Account,Company) %>% mutate(min=min(priority)) %>% filter(priority==min)
+
+# dedupe by Name then phone
+cont_con_dupe1<-cont_con_full %>% arrange(priority) %>% group_by(Contact_Name) %>% mutate(dupe=1:n())
+cont_con_dupe1$keep<-FALSE
+cont_con_dupe1$keep[cont_con_dupe1$dupe==1|cont_con_dupe1$Contact_Name==" "|cont_con_dupe1$Contact_Name=="Accounts Receivable"]<-TRUE
+
+cont_con<-cont_con_dupe1 %>% filter(keep) %>% 
+  arrange(priority) %>% group_by(Contact_Phone) %>% mutate(dupe=1:n()) %>% filter(dupe==1) %>% select(-dupe,-min,-keep,-priority)
+
+# contractor projects
+projects$zip<-as.numeric(substr(projects$et_zipplus4,1,5))
+cont_proj<-left_join(projects,counties,by=c("zip"="Zip.Code")) %>% left_join(regions,by="County")
+cont_proj_agg<-cont_proj %>% filter(installercompany!=0&!is.na(installercompany)) %>% 
+  group_by(installercompany) %>% 
+  summarise(Proj_2016=sum(year==2016),Proj_2017=sum(year==2017),Proj_2018=sum(year==2018),Common_Region=Mode(Trade.Ally.Region),Common_Track=Mode(trackval))
+
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==1]<-"SEM"
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==2]<-"Custom"
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==3]<-"DI"
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==4]<-"Standard"
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==5]<-"Lighting"
+cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==1000]<-"Other"
+table(cont_proj_agg$Common_Track)
+
+# contractor frame
+cont_frame<-left_join(cont_con,cont_proj_agg,c("Account"="installercompany")) %>% filter(Common_Track!="SEM"&Common_Track!="Other"&Common_Track!="Custom")
+
+# write.csv(cont_frame,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_Contractor_Frame.csv")
 
