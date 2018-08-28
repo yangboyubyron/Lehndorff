@@ -328,16 +328,21 @@ ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",wid
 # by sector and participant date
 # •	stacked adj count sector / participation date
 counts_adj_part<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% group_by(recent_part,naicsgroup) %>% summarise(n=n()) %>% 
-  left_join(State_adj,by="naicsgroup") %>% ungroup() %>% mutate(count_adj=ifelse(recent_part=="Non-Participant",round(n*adj),n))
+  left_join(State_adj,by="naicsgroup") %>% ungroup() %>% mutate(count_adj=ifelse(recent_part=="Non-Participant",round(n*adj),n)) %>% group_by(naicsgroup) %>% arrange(desc(recent_part)) %>% mutate(text=cumsum(count_adj)+4000)
+
+counts_adj_part$text[counts_adj_part$text>40000]<-counts_adj_part$text[counts_adj_part$text>40000]-8500
+
+counts_adj_part$text[counts_adj_part$recent_part!="Non-Participant"]<-NA
 
 ggplot(counts_adj_part %>% ungroup())+
   geom_bar(stat="identity",aes(x=factor(naicsgroup,levels = NAICS_levels),y=count_adj,fill=factor(recent_part,levels = recent_levels)))+
+  geom_text(aes(x=factor(naicsgroup,levels = NAICS_levels),y=text,label=format(count_adj,big.mark = ",",format="d")))+
   scale_fill_manual(values = EEcolors5)+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Participation Recency")
+  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Participation Status")
 
 ggsave("adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -372,7 +377,7 @@ ggplot(characterization_recent_kwh %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted GWh Usage and Count of Non-Participants",x="Business Sector",fill="Participation Recency")
+  labs(y="Annual GWh Usage",x="Business Sector",fill="Participation Status")
 
 ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -418,7 +423,7 @@ ggplot(characterization_recent_therms %>% ungroup())+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Adjusted Therms Usage (millions) and Count of Non-Participants",x="Business Sector",fill="Participation Recency")
+  labs(y="Annual Therms Usage (Millions)",x="Business Sector",fill="Participation Status")
 
 ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -472,4 +477,18 @@ ggplot(characterization_reg_therms %>% filter(!is.na(Region)) %>% ungroup())+
 #   geom_bar(stat = "identity",position = "stack",aes(x=paste(naicsgroup,fuel_size,sep=" "),y=Therms_adj,fill=participation))+
 #   theme(axis.text.x = element_text(angle = 90))
 
+# counts
 
+table1<-projects %>% filter(year>=2017) %>% filter(projectid!="") %>% group_by(trackval) %>% summarise(Parts_2017=n_distinct(projectid[year==2017]),Parts_2018=n_distinct(projectid[year==2018]),Total=n_distinct(projectid[year>=2017]))
+table1$trackval<-c("SEM","Custom","Direct Install","Standard","Lighting","Other")
+
+table2<-projects %>% filter(year>=2017) %>% filter(bcreportdescription!="") %>% group_by(bcreportdescription) %>% summarise(Measures_2017=sum(year==2017),Measures_2018=sum(year==2018),Total=n())
+
+table3<-population %>% filter(participation=="Participant") %>% filter(year(date)>=2017) %>% group_by(naicsgroup) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
+
+table4<-population %>% filter(participation=="Participant") %>% filter(year(date)>=2017) %>% group_by(Region) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
+
+# write.xlsx(table1,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Project by Track")
+# write.xlsx(table2,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Measure by Type",append = TRUE)
+# write.xlsx(table3,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Sector",append = TRUE)
+# write.xlsx(table4,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Region",append = TRUE)
