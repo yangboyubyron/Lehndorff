@@ -479,12 +479,12 @@ ggplot(characterization_reg_therms %>% filter(!is.na(Region)) %>% ungroup())+
 
 # counts
 
-table1<-projects %>% filter(year>=2017&programdescription=="Existing Buildings") %>% filter(projectid!="") %>% group_by(trackval) %>% summarise(Parts_2017=n_distinct(projectid[year==2017]),Parts_2018=n_distinct(projectid[year==2018]),Total=n_distinct(projectid[year>=2017]))
-table1$trackval<-c("Custom","Direct Install","Standard","Lighting","Other")
+table1<-projects %>% filter(year>=2017&(programdescription=="Existing Buildings"|trackval==1)) %>% filter(projectid!="") %>% group_by(trackval) %>% summarise(Parts_2017=n_distinct(projectid[year==2017]),Parts_2018=n_distinct(projectid[year==2018]),Total=n_distinct(projectid[year>=2017]))
+table1$trackval<-c("SEM","Custom","Direct Install","Standard","Lighting","Other")
 
-table2<-projects %>% filter(year>=2017&programdescription=="Existing Buildings") %>% filter(bcreportdescription!="") %>% group_by(bcreportdescription) %>% summarise(Measures_2017=sum(year==2017),Measures_2018=sum(year==2018),Total=n())
+table2<-projects %>% filter(year>=2017&(programdescription=="Existing Buildings"|trackval==1)) %>% filter(bcreportdescription!="") %>% group_by(bcreportdescription) %>% summarise(Measures_2017=sum(year==2017),Measures_2018=sum(year==2018),Total=n())
 
-EBsites<-unique(subset(projects,year>=2017&programdescription=="Existing Buildings")$et_siteid)
+EBsites<-unique(subset(projects,year>=2017&(programdescription=="Existing Buildings"|trackval==1))$et_siteid)
 
 table3<-population %>% filter(participation=="Participant"&et_siteid%in%EBsites) %>% filter(year(date)>=2017) %>% group_by(naicsgroup) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
 
