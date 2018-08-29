@@ -188,7 +188,7 @@ ggplot(population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/
   scale_y_continuous(labels = scales::comma)+
   labs(y="Count of Customers",x="Business Sector",fill="Customer Size")
 
-ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # ggplot(population %>% filter(naicsgroup!="Unknown Commercial"))+
 #   geom_bar(position = "fill",aes(x=naicsgroup,fill=fuel_size))+
@@ -287,7 +287,7 @@ ggplot(counts_adj %>% ungroup())+
   scale_y_continuous(labels = scales::comma)+
   labs(y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 
 #•	Proportion of program participation by market sector - # of sites
@@ -299,7 +299,7 @@ ggplot(counts_adj %>% ungroup())+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of Customers",x="Business Sector",fill="Customer Size / Participation")
 
-ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # by sector and track %
 # •	Proportion of program participation by market sector and program track 
@@ -311,7 +311,7 @@ ggplot(counts_adj_track %>% ungroup())+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of Customers",x="Business Sector",fill="Program Track")
 
-ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # by region and track %
 # •	Proportion of program participation by region and program track 
@@ -323,7 +323,7 @@ ggplot(counts_reg %>% filter(!is.na(Region)) %>% ungroup())+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(x="Region",y="Proportion of Customers",fill="Program Track")
 
-ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # by sector and participant date
 # •	stacked adj count sector / participation date
@@ -344,7 +344,7 @@ ggplot(counts_adj_part %>% ungroup())+
   scale_y_continuous(labels = scales::comma)+
   labs(y="Adjusted Count of Customers",x="Business Sector",fill="Participation Status")
 
-ggsave("adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # 
 fuel_part_levels2<-c("Non-Participant","Large Participant","Medium Participant","Small Participant","Unknown Size Participant")
@@ -379,7 +379,7 @@ ggplot(characterization_recent_kwh %>% ungroup())+
   scale_y_continuous(labels = scales::comma)+
   labs(y="Annual GWh Usage",x="Business Sector",fill="Participation Status")
 
-ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # •	Proportion of program participation by market sector - kWh usage
 ggplot(characterization_adj_kwh %>% filter(fuel_part!="Unknown Size Participant") %>% ungroup())+
@@ -390,7 +390,7 @@ ggplot(characterization_adj_kwh %>% filter(fuel_part!="Unknown Size Participant"
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of kWh Usage",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 ggplot(characterization_reg_kwh %>% filter(!is.na(Region)) %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=Region,y=kwh,fill=factor(fuel_part,fuel_part_levels2)))+
@@ -425,7 +425,7 @@ ggplot(characterization_recent_therms %>% ungroup())+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Annual Therms Usage (Millions)",x="Business Sector",fill="Participation Status")
 
-ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 # •	Proportion of program participation by market sector - gas usage
 ggplot(characterization_adj_therms %>% filter(fuel_part!="Unknown Size Participant") %>% ungroup())+
@@ -436,7 +436,7 @@ ggplot(characterization_adj_therms %>% filter(fuel_part!="Unknown Size Participa
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   labs(y="Proportion of Therms Usage",x="Business Sector",fill="Customer Size")
 
-ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
+#ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
 ggplot(characterization_reg_therms %>% filter(!is.na(Region)) %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=Region,y=therms,fill=factor(fuel_part,fuel_part_levels2)))+
@@ -479,14 +479,16 @@ ggplot(characterization_reg_therms %>% filter(!is.na(Region)) %>% ungroup())+
 
 # counts
 
-table1<-projects %>% filter(year>=2017) %>% filter(projectid!="") %>% group_by(trackval) %>% summarise(Parts_2017=n_distinct(projectid[year==2017]),Parts_2018=n_distinct(projectid[year==2018]),Total=n_distinct(projectid[year>=2017]))
-table1$trackval<-c("SEM","Custom","Direct Install","Standard","Lighting","Other")
+table1<-projects %>% filter(year>=2017&programdescription=="Existing Buildings") %>% filter(projectid!="") %>% group_by(trackval) %>% summarise(Parts_2017=n_distinct(projectid[year==2017]),Parts_2018=n_distinct(projectid[year==2018]),Total=n_distinct(projectid[year>=2017]))
+table1$trackval<-c("Custom","Direct Install","Standard","Lighting","Other")
 
-table2<-projects %>% filter(year>=2017) %>% filter(bcreportdescription!="") %>% group_by(bcreportdescription) %>% summarise(Measures_2017=sum(year==2017),Measures_2018=sum(year==2018),Total=n())
+table2<-projects %>% filter(year>=2017&programdescription=="Existing Buildings") %>% filter(bcreportdescription!="") %>% group_by(bcreportdescription) %>% summarise(Measures_2017=sum(year==2017),Measures_2018=sum(year==2018),Total=n())
 
-table3<-population %>% filter(participation=="Participant") %>% filter(year(date)>=2017) %>% group_by(naicsgroup) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
+EBsites<-unique(subset(projects,year>=2017&programdescription=="Existing Buildings")$et_siteid)
 
-table4<-population %>% filter(participation=="Participant") %>% filter(year(date)>=2017) %>% group_by(Region) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
+table3<-population %>% filter(participation=="Participant"&et_siteid%in%EBsites) %>% filter(year(date)>=2017) %>% group_by(naicsgroup) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
+
+table4<-population %>% filter(participation=="Participant"&et_siteid%in%EBsites) %>% filter(year(date)>=2017) %>% group_by(Region) %>% summarise(Parts_2017=n_distinct(et_siteid[year(date)==2017]),Parts_2018=n_distinct(et_siteid[year(date)==2018]),Total=n_distinct(et_siteid[year(date)>=2017])) 
 
 # write.xlsx(table1,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Project by Track")
 # write.xlsx(table2,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Measure by Type",append = TRUE)
