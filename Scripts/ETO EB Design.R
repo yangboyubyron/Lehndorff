@@ -379,7 +379,7 @@ projects$zip<-as.numeric(substr(projects$et_zipplus4,1,5))
 cont_proj<-left_join(projects,counties,by=c("zip"="Zip.Code")) %>% left_join(regions,by="County")
 cont_proj_agg<-cont_proj %>% filter(installercompany!=0&!is.na(installercompany)) %>% 
   group_by(installercompany) %>% 
-  summarise(Proj_2016=sum(year==2016),Proj_2017=sum(year==2017),Proj_2018=sum(year==2018),Common_Region=Mode(Trade.Ally.Region),Common_Track=Mode(trackval))
+  summarise(n_proj=n_distinct(projectid[year>=2017]),Proj_2016=sum(year==2016),Proj_2017=sum(year==2017),Proj_2018=sum(year==2018),Common_Region=Mode(Trade.Ally.Region),Common_Track=Mode(trackval))
 
 cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==1]<-"SEM"
 cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==2]<-"Custom"
@@ -390,7 +390,17 @@ cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==1000]<-"Other"
 table(cont_proj_agg$Common_Track)
 
 # contractor frame
-cont_frame<-left_join(cont_con,cont_proj_agg,c("Account"="installercompany")) %>% filter(Common_Track!="SEM"&Common_Track!="Other"&Common_Track!="Custom")
+cont_frame<-left_join(cont_con,cont_proj_agg,c("Account"="installercompany")) %>% filter(Common_Track!="SEM"&Common_Track!="Other"&Common_Track!="DI")
 
-# write.csv(cont_frame,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_Contractor_Frame.csv")
+cont_frame$Activity[cont_frame$Activity=="Unknown"&cont_frame$n_proj>10]<-"High Activity"
+cont_frame$Activity[cont_frame$Activity=="Unknown"&cont_frame$n_proj>4]<-"Medium Activity"
+cont_frame$Activity[cont_frame$Activity=="Unknown"&cont_frame$n_proj>0]<-"Low Activity"
+cont_frame$Activity[cont_frame$Activity=="Unknown"&cont_frame$n_proj==0]<-"Inactive"
+table(cont_frame$Activity)
+
+set.seed(349857)
+cont_frame$Random<-runif(nrow(cont_frame),1,nrow(cont_frame))
+
+cont_frame_out<-cont_frame %>% filter(Activity!="Inactive") %>%  select(-n_proj,-n)
+# write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_Contractor_Frame.csv")
 
