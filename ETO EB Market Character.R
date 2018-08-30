@@ -494,3 +494,11 @@ table4<-population %>% filter(participation=="Participant"&et_siteid%in%EBsites)
 # write.xlsx(table2,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Measure by Type",append = TRUE)
 # write.xlsx(table3,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Sector",append = TRUE)
 # write.xlsx(table4,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Region",append = TRUE)
+
+# Final analysis data
+final_data<-population %>% ungroup() %>% filter(!grepl("Multifamily",naicsgroup)) %>%  select(et_siteid,naicsgroup,kwh2017,therms2017,fuel_group,elec_fuel_size,gas_fuel_size,fuel_size,County,Region,participation,track,date,recent_part,fuel_part) %>% left_join(State_adj %>% select(naicsgroup,adj),by="naicsgroup")
+final_data$adj[final_data$participation=="Participant"]<-1
+
+colnames(final_data)<-c("et_siteid","Business Sector","kwh2017","therms2017","Fuel Type","Electric Size","Gas Size","Overall Size","County","Region","Participation","Program Track","Most Recent Participation Date","Participation Status","Size/Participation","Weight")
+
+# write.csv(final_data,"/volumes/Projects/430011 - ETO Existing Buildings/Data/Analysis_Dataset.csv",row.names = FALSE)
