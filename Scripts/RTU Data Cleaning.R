@@ -246,3 +246,49 @@ table(paste(RTUout3$CZ,RTUout3$Channel,sep=""))
 # write.csv(RTUout1,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE6_0801.csv",row.names = FALSE)
 # write.csv(RTUout2,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE7_0801.csv",row.names = FALSE)
 # write.csv(RTUout3,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE8_0801.csv",row.names = FALSE)
+
+# 2018 Data
+
+New2018<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/SMB Customer List 02062018.csv",stringsAsFactors=FALSE)
+New2018$fullad<-paste(New2018$Site.Address,paste(New2018$City, New2018$Zip.Code,sep=" "),sep = ", ")
+
+test<-subset(New2018,tolower(fullad)%in%tolower(RTUin$Site_Address_Combined2))
+test2<-subset(RTUin,tolower(Site_Address_Combined2)%in%tolower(New2018$fullad))
+test3<-subset(New2018,!tolower(fullad)%in%tolower(RTUin$Site_Address_Combined2)) %>% filter(Site.Address!="") %>% group_by(fullad) %>% mutate(double=substr(fullad,1,regexpr("[a-zA-z][[:space:]]",fullad)[1]))
+
+RTUin$double<-substr(RTUin$Site_Address_Combined2,1,regexpr("[a-zA-z][[:space:]]",RTUin$Site_Address_Combined2)[1])
+
+RTUin<-RTUin %>% group_by(Site_Address_Combined2) %>% mutate(double=substr(Site_Address_Combined2,1,regexpr("[a-zA-z][[:space:]]",Site_Address_Combined2)[1]))
+
+test4<-subset(test3,tolower(double)%in%tolower(RTUin$double))
+
+otherdupe<-c("1 SOUTHLAND MALL DR, Hayward 94545",
+"10734 TRINITY PKWY SP C, Stockton 95219",
+"2400 CENTRAL PARKWAY, DUBLIN 94568",
+"1041 Helen Power Drive, Vacaville 95687",
+"141 General Stilwell Dr Suite B, Marina 93933",
+"1508 Tollhouse Road, Clovis 93611",
+"1700 Market Street, OAKLAND 94607",
+"2090 Diamond Blvd Ste 20, Concord 94520",
+"2121 2nd Street, Davis 95616",
+"2701 Ming Ave., Bakersfield 93304",
+"280 Hegenberger Road, OAKLAND 94621",
+"3105 Highland Ave, Selma 93662",
+"312 Railroad Ave, Danville 94526",
+"3755 Atherton Rd, Rocklin 95765",
+"4751 Pacific Avenue, Stockton 95207",
+"520 Chadbourne Road, Fairfield 94534",
+"555 Selby St., San Francisco 94124",
+"5620 California Ave, Bakersfield 93309",
+"6001 Pioneer Dr., Bakersfield 93306",
+"7448 Fox Rd., Hughson 95326",
+"9000 Ming Avenue, Bakersfield 93311")
+
+New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad) %>% filter(Site.Address!="")
+
+
+
+
+
+
+
