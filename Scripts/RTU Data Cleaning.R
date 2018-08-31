@@ -262,6 +262,58 @@ RTUin<-RTUin %>% group_by(Site_Address_Combined2) %>% mutate(double=substr(Site_
 
 test4<-subset(test3,tolower(double)%in%tolower(RTUin$double))
 
+RTUin$cleanest<-tolower(gsub("[[:punct:]]*","",RTUin$Site_Address_Combined2))
+RTUin$cleanest<-gsub(" north "," n ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" south "," s ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" east "," e ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" west "," w ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" northwest "," nw ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" northeast "," ne ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" southwest "," sw ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" road "," rd ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" drive "," dr ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" avenue "," ave ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" parkway "," pkwy ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" boulevard "," blvd ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" street "," st ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" place "," pl ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" court "," ct ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" way "," wy ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" highway "," hwy ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" suite "," ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" ste "," ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" hse "," ",RTUin$cleanest)
+RTUin$cleanest<-gsub(" #"," ",RTUin$cleanest,fixed = TRUE)
+RTUin$cleanest<-gsub(" sp "," ",RTUin$cleanest)
+
+New2018$cleanest<-tolower(gsub("[[:punct:]]*","",New2018$fullad))
+New2018$cleanest<-gsub(" north "," n ",New2018$cleanest)
+New2018$cleanest<-gsub(" south "," s ",New2018$cleanest)
+New2018$cleanest<-gsub(" east "," e ",New2018$cleanest)
+New2018$cleanest<-gsub(" west "," w ",New2018$cleanest)
+New2018$cleanest<-gsub(" northwest "," nw ",New2018$cleanest)
+New2018$cleanest<-gsub(" northeast "," ne ",New2018$cleanest)
+New2018$cleanest<-gsub(" southwest "," sw ",New2018$cleanest)
+New2018$cleanest<-gsub(" road "," rd ",New2018$cleanest)
+New2018$cleanest<-gsub(" drive "," dr ",New2018$cleanest)
+New2018$cleanest<-gsub(" avenue "," ave ",New2018$cleanest)
+New2018$cleanest<-gsub(" parkway "," pkwy ",New2018$cleanest)
+New2018$cleanest<-gsub(" boulevard "," blvd ",New2018$cleanest)
+New2018$cleanest<-gsub(" street "," st ",New2018$cleanest)
+New2018$cleanest<-gsub(" place "," pl ",New2018$cleanest)
+New2018$cleanest<-gsub(" court "," ct ",New2018$cleanest)
+New2018$cleanest<-gsub(" way "," wy ",New2018$cleanest)
+New2018$cleanest<-gsub(" highway "," hwy ",New2018$cleanest)
+New2018$cleanest<-gsub(" suite "," ",New2018$cleanest)
+New2018$cleanest<-gsub(" ste "," ",New2018$cleanest)
+New2018$cleanest<-gsub(" hse "," ",New2018$cleanest)
+New2018$cleanest<-gsub(" #"," ",New2018$cleanest,fixed = TRUE)
+New2018$cleanest<-gsub(" sp "," ",New2018$cleanest)
+
+table(subset(New2018,Site.Address!="")$cleanest%in%RTUin$cleanest)
+
+drops<-subset(New2018,Site.Address!=""&cleanest%in%RTUin$cleanest)
+
 otherdupe<-c("1 SOUTHLAND MALL DR, Hayward 94545",
 "10734 TRINITY PKWY SP C, Stockton 95219",
 "2400 CENTRAL PARKWAY, DUBLIN 94568",
@@ -284,7 +336,9 @@ otherdupe<-c("1 SOUTHLAND MALL DR, Hayward 94545",
 "7448 Fox Rd., Hughson 95326",
 "9000 Ming Avenue, Bakersfield 93311")
 
-New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad) %>% filter(Site.Address!="")
+table(otherdupe%in%zzz$fullad)
+
+New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!cleanest%in%drops$cleanest) %>% filter(Site.Address!="")
 
 
 
