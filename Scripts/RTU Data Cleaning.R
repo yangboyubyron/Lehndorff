@@ -336,14 +336,7 @@ otherdupe<-c("1 SOUTHLAND MALL DR, Hayward 94545",
 "7448 Fox Rd., Hughson 95326",
 "9000 Ming Avenue, Bakersfield 93311")
 
-<<<<<<< HEAD
 table(otherdupe%in%drops$fullad)
-=======
-table(otherdupe%in%zzz$fullad)
-
-New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!cleanest%in%drops$cleanest) %>% filter(Site.Address!="")
-
->>>>>>> b377b82a8165b2490a8c75b8ad7ec453d562bc77
 
 New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!cleanest%in%drops$cleanest) %>% filter(Site.Address!="")
 
