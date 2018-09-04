@@ -73,17 +73,31 @@ projects$trackval[projects$trackval==1&!projects$confrim_SEM]<-1000
 projects$impact_survey<-projects$projectid%in%impact_surv$projectid
 
 # Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% summarise(n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE))
+
 Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% arrange(desc(date)) %>% 
-  summarise(Project_Name=first(projecttitle),Project_Address=first(et_streetaddress),numb_projects=n_distinct(projectid),proj_date=first(date),n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),
-    past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE),
-    county=first(et_county),sqft=first(sqft),units=first(numberofunits),floors=first(numberoffloors),yearbuilt=first(yearbuilt),rental=first(rentalindicator)) %>% 
+  mutate(Project_Name=projecttitle,Project_Address=et_streetaddress,numb_projects=n_distinct(projectid),most_recent_date=first(date),most_recent_track=first(projecttrackdescription),most_recent_project=first(bcreportdescription),n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),
+    recent_year=max(year[year>=2016&trackval<1000&!is.na(year)],na.rm = TRUE),past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE),
+    county=first(et_county),sqft=first(sqft),units=first(numberofunits),floors=first(numberoffloors),yearbuilt=first(yearbuilt),rental=first(rentalindicator),
+    segment=ifelse((is.infinite(recent_group)|is.na(recent_group)|recent_group==1000),paste(past_group,"P",sep="-"),paste(recent_group,"R",sep="-")),rel_year=ifelse(grepl("R",segment),recent_year,past_year),rel_trackval=ifelse(grepl("R",segment),recent_group,past_group)) %>% 
+  ungroup() %>% 
+  filter(year==rel_year&trackval==rel_trackval) %>% 
+  group_by(et_siteid) %>% mutate(row=1:n()) %>% filter(row==1) %>% 
   left_join(select(regions,-Trade.Ally.Region),by=c("county"="County")) %>% 
-  left_join(select(population,c(et_siteid,kwh2017,therms2017)),by="et_siteid")
+  left_join(select(population,c(et_siteid,kwh2017,therms2017)),by="et_siteid") %>% 
+  filter(segment!="Inf-P") %>% data.frame()
 
-Parts$segment<-paste(Parts$recent_group,"R",sep = "-")
-Parts$segment[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000]<-paste(Parts$past_group[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000],"P",sep="-")
 
-Parts<-Parts %>% filter(segment!="Inf-P") %>% data.frame()
+# Parts<-projects %>% filter(programdescription!="") %>% group_by(et_siteid) %>% arrange(desc(date)) %>% 
+#   summarise(Project_Name=first(projecttitle),Project_Address=first(et_streetaddress),numb_projects=n_distinct(projectid),proj_date=first(date),n_measures=n(),mult_date=n_distinct(year),mult_track=n_distinct(trackval),
+#     past_year=max(year[year<2016&trackval<1000&!is.na(year)],na.rm = TRUE), recent_group=min(trackval[as.Date(date)>="2016-01-01"]),past_group=min(trackval[year==past_year],na.rm = TRUE),impact=max(impact_survey),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE),
+#     county=first(et_county),sqft=first(sqft),units=first(numberofunits),floors=first(numberoffloors),yearbuilt=first(yearbuilt),rental=first(rentalindicator)) %>% 
+#   left_join(select(regions,-Trade.Ally.Region),by=c("county"="County")) %>% 
+#   left_join(select(population,c(et_siteid,kwh2017,therms2017)),by="et_siteid")
+# 
+# Parts$segment<-paste(Parts$recent_group,"R",sep = "-")
+# Parts$segment[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000]<-paste(Parts$past_group[is.infinite(Parts$recent_group)|is.na(Parts$recent_group)|Parts$recent_group==1000],"P",sep="-")
+
+# Parts<-Parts %>% filter(segment!="Inf-P") %>% data.frame()
 table(Parts$segment)
 table(Parts$segment,Parts$impact)
 table(Parts$sector)
@@ -153,19 +167,26 @@ PartFrame_dedupe$match<-paste(PartFrame_dedupe$et_siteid,PartFrame_dedupe$segmen
 table(impact_include$match%in%PartFrame_dedupe$match)
 
 PartFrame_dedupe<-PartFrame_dedupe %>% filter((any_impact==0|match%in%impact_include$match))
+PartFrame_dedupe$year_bin<-"UNASSIGNED"
+PartFrame_dedupe$year_bin[PartFrame_dedupe$year<2008&PartFrame_dedupe$year_bin=="UNASSIGNED"]<-"Pre 2008"
+PartFrame_dedupe$year_bin[PartFrame_dedupe$year<2013&PartFrame_dedupe$year_bin=="UNASSIGNED"]<-"2008 through 2012"
+PartFrame_dedupe$year_bin[PartFrame_dedupe$year<2019&PartFrame_dedupe$year_bin=="UNASSIGNED"]<-"Since 2013"
+table(PartFrame_dedupe$year_bin)
 
 # summary table
 PartFrame_summary<-PartFrame_dedupe %>% group_by(track=sub("[[:alpha:]]+[[:space:]]","",segment),timeframe=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n(),impact=sum(any_impact)) %>% arrange(track,desc(timeframe)) %>% data.frame()
 # write.xlsx(PartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = FALSE,sheetName = "Participants",row.names = FALSE)
 
-# write out frame by segment
+# write out frame by segment and assign random
+set.seed(729358)
 
 j<-0
 for (i in unique(PartFrame_dedupe$segment)){
   if(WRITE!=TRUE){break}
   j<-j+1
   # frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","segment","any_impact","n_sectors","most_common_sector","n_measures","total_incent","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email") %>% data.frame()
-  frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","Project_Name","Project_Address","proj_date","numb_projects","segment","kwh2017","therms2017","Regions.for.EB.Process","sector","n_sectors","most_common_sector","n_measures","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email","sqft","yearbuilt","units","floors","rental") %>% data.frame()
+  frameout<-PartFrame_dedupe %>% filter(segment==i) %>% select("et_siteid","Project_Name","Project_Address","date","year_bin","segment","numb_projects","most_recent_date","most_recent_track","most_recent_project", "kwh2017","therms2017","Regions.for.EB.Process","sector","n_sectors","most_common_sector","n_measures","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email","sqft","yearbuilt","units","floors","rental") %>% data.frame()
+  frameout$random<-runif(nrow(frameout),100,100+nrow(frameout))
   if(j==1){
     write.xlsx(frameout,"/Users/Lehndorff/desktop/Part_Frame.xlsx",append = FALSE,sheetName = i,row.names = FALSE)
   }else{
