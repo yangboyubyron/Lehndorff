@@ -342,10 +342,10 @@ table(otherdupe%in%drops$fullad)
 
 New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!cleanest%in%drops$cleanest) %>% 
   filter(Site.Address!="") %>% 
-  filter(Climate.Zone==3|Climate.Zone==4|Climate.Zone==12) %>% 
+  filter(Climate.Zone==3|Climate.Zone==4|Climate.Zone==12|Climate.Zone==2|Climate.Zone==13) %>%
   filter(Equipment.Tons>=4.5&Equipment.Tons<=15)
 
-# write.csv(New2018_dedupe %>% select(-SAID,-cleanest) %>% ungroup(),"/Volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/Deduped_2018.csv",row.names = FALSE)
+# write.csv(New2018_dedupe %>% select(-SAID,-cleanest) %>% ungroup(),"/Volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/Deduped_2018_0910.csv",row.names = FALSE)
 
 
 
