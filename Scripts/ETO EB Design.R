@@ -283,7 +283,7 @@ n_distinct(ally$TradeAllyName)==n_distinct(trade$TradeAllyName)
 non_ally<-projects %>% filter(!installercompanyname%in%ally$TradeAllyName)
 
 contractor_proj<-projects %>% mutate(Ally=installercompanyname%in%ally$TradeAllyName)
-table(contractor_proj$ally)
+table(contractor_proj$Ally)
 
 contproj_agg<-contractor_proj %>% filter(installercompanyname!="") %>% group_by(installercompanyname) %>% summarise(n_proj=n_distinct(projectid[date>="2017-01-01"]),most_common=Mode(sort(trackval[trackval<1000&date>="2017-01-01"])),min=min(trackval,na.rm = TRUE)) %>% mutate(ally=installercompanyname%in%ally$TradeAllyName)
 contproj_agg_act<-left_join(contproj_agg,ally_act,by=c("installercompanyname"="TradeAllyName"))
@@ -422,6 +422,12 @@ table(cont_frame$Activity)
 set.seed(349857)
 cont_frame$Random<-runif(nrow(cont_frame),1,nrow(cont_frame))
 
-cont_frame_out<-cont_frame %>% filter(Activity!="Inactive") %>%  select(-n_proj,-n)
-# write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_Contractor_Frame.csv")
+# New as of 0920. Trade allies are listed in non-trade ally contracts. As a result, this code includes some trade allies in the sample frame, but listed as non-trade allies. 
+cont_frame$drop_ally<-cont_frame$Company%in%trade$TradeAllyName&cont_frame$Ally=="Non-Trade Ally"
+table(cont_frame$drop_ally,cont_frame$Ally)
+
+cont_frame_out<-cont_frame %>% filter(Activity!="Inactive"&!drop_ally) %>%  select(-n_proj,-n,-drop_ally)
+table(cont_frame_out$Company%in%trade$TradeAllyName,cont_frame_out$Ally)
+
+# write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Contractor_Frame_0920.csv")
 
