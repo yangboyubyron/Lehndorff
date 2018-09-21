@@ -431,3 +431,16 @@ table(cont_frame_out$Company%in%trade$TradeAllyName,cont_frame_out$Ally)
 
 # write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Contractor_Frame_0920.csv")
 
+# for Phil 0920
+proj_agg<-projects %>% 
+  filter(year>=2017) %>% 
+  group_by(projectid) %>% 
+  mutate(total_kWh=sum(workingkwh,na.rm=TRUE),total_therms=sum(workingtherms,na.rm=TRUE)) %>% 
+  group_by(projectid,installercompany,installercompanyname,total_kWh,total_therms) %>% 
+  summarise(date=min(date),installer_kWh=sum(workingkwh,na.rm = TRUE),installer_therms=sum(workingtherms,narm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(kWh_rank=dense_rank(-total_kWh),therms_rank=dense_rank(-total_therms)) %>% 
+  filter((kWh_rank<=20|therms_rank<=20)) %>% 
+  arrange(kWh_rank)
+
+# write.csv(proj_agg,"~/desktop/Contractors for Large Projects.csv",row.names = FALSE)
