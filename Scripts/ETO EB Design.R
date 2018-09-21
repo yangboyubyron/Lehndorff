@@ -400,7 +400,7 @@ projects$zip<-as.numeric(substr(projects$et_zipplus4,1,5))
 cont_proj<-left_join(projects,counties,by=c("zip"="Zip.Code")) %>% left_join(regions,by="County")
 cont_proj_agg<-cont_proj %>% filter(installercompany!=0&!is.na(installercompany)) %>% 
   group_by(installercompany) %>% 
-  summarise(n_proj=n_distinct(projectid[year>=2017]),Proj_2016=sum(year==2016),Proj_2017=sum(year==2017),Proj_2018=sum(year==2018),Common_Region=Mode(Trade.Ally.Region),Common_Track=Mode(trackval))
+  summarise(n_proj=n_distinct(projectid[year>=2017]),Proj_2016=sum(year==2016),Proj_2017=sum(year==2017),Proj_2018=sum(year==2018),recent_kWh=sum(workingkwh[year>=2017]),recent_therms=sum(workingtherms[year>=2017]),Common_Region=Mode(Trade.Ally.Region),Common_Track=Mode(trackval))
 
 cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==1]<-"SEM"
 cont_proj_agg$Common_Track[cont_proj_agg$Common_Track==2]<-"Custom"
@@ -429,7 +429,7 @@ table(cont_frame$drop_ally,cont_frame$Ally)
 cont_frame_out<-cont_frame %>% filter(Activity!="Inactive"&!drop_ally) %>%  select(-n_proj,-n,-drop_ally)
 table(cont_frame_out$Company%in%trade$TradeAllyName,cont_frame_out$Ally)
 
-# write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Contractor_Frame_0920.csv")
+# write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Contractor_Frame_0921.csv")
 
 # for Phil 0920
 proj_agg<-projects %>% 
