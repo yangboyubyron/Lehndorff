@@ -262,7 +262,7 @@ NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha
 # write.xlsx(NonPartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Non-Participants",row.names = FALSE)
 
 # write out frame by naics group
-
+# write.csv(NonPartFrame_dedupe,"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_NonPart_Frame.csv",row.names = FALSE)
 
 # Contractor summary
 trade<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Trade Allies for Process Eval.csv",stringsAsFactors = FALSE)
