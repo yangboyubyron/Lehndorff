@@ -12,10 +12,21 @@ spending<-read.csv("/volumes/Projects/Alaska DHSS/SpendingPerMemberReporting/FY2
 spending$merge<-paste(spending$BSysID,spending$FiscalYear,spending$FiscalMonth,sep="-")
 
 enroll_spending<-left_join(enrollment,spending %>% select(-BSysID,-FiscalYear,-FiscalMonth),by="merge")
+enroll_spending$CalendarDate<-years(enroll_spending$FiscalYear)+months(enroll_spending$FiscalMonth+6)
+
+enroll_spending$Group<-"Not Defined"
+enroll_spending$Group[enroll_spending$Age<20]<-"Children"
+enroll_spending$Group[enroll_spending$Age>=20&enroll_spending$Age<65&enroll_spending$ElgClass=="88"]<-"Expansion"
+enroll_spending$Group[enroll_spending$Age>=20&enroll_spending$Age<65&enroll_spending$ElgClass!="88"&enroll_spending$ElgClass!="56"&enroll_spending$ElgClass!="54"&enroll_spending$ElgClass!="52"&enroll_spending$ElgClass!="50"]<-"Other Non-Disabled Adults"
+enroll_spending$Group[enroll_spending$Age>=65|(enroll_spending$Age>=20&enroll_spending$Age<65&(enroll_spending$ElgClass=="56"|enroll_spending$ElgClass=="54"|enroll_spending$ElgClass=="52"|enroll_spending$ElgClass=="50"))]<-"Senior or Disabled"
+
+table(enroll_spending$ElgClass[enroll_spending$Group=="Not Defined"],is.na(enroll_spending$Age[enroll_spending$Group=="Not Defined"]))
+
+NotDefined<-subset(enroll_spending,Group=="Not Defined")
 
 Agg<-enroll_spending %>% 
-  filter(ElgClass==30) %>% 
-  group_by(FiscalYear,FiscalMonth) %>% 
+  filter(Group!="Not Defined") %>% 
+  group_by(FiscalYear,FiscalMonth,Group) %>% 
   summarise(
     SpendPerElig_01=sum(Spend01,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend01)]),
     SpendPerElig_02=sum(Spend02,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend02)]),
@@ -58,17 +69,31 @@ Agg<-enroll_spending %>%
     StatePerElig_19=sum(StateSpend19,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend19)]),
     StatePerElig_20=sum(StateSpend20,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend20)])
     ) %>% 
-  select(FiscalYear,FiscalMonth,contains("02")) %>% 
+  select(FiscalYear,FiscalMonth,Group,contains("02")) %>% 
+  group_by(Group) %>% 
   mutate(
-    Date=as.Date(paste(FiscalYear,FiscalMonth,1,sep = "-")),
+    Date=factor(paste(FiscalYear,FiscalMonth,sep="-"),levels = paste(FiscalYear,FiscalMonth,sep="-")),
     three_month=runmean(SpendPerElig_02,3,align = "right",endrule = "NA"),
-    six_month=runmean(SpendPerElig_02,6,align = "right",endrule = "NA"))
+    six_month=runmean(SpendPerElig_02,6,align = "right",endrule = "NA"),
+    CalendarYear=ifelse(FiscalMonth<=6,FiscalYear,FiscalYear+1),
+    order=1:n()) %>%
+  ungroup()
 
 ggplot(Agg)+
-  geom_line(aes(x=Date,y=SpendPerElig_02),color="black")+
-  geom_line(aes(x=Date,y=three_month),color="red")+
-  geom_line(aes(x=Date,y=six_month),color="blue")+
-  labs(title="Spending on 02 per Elig Class 30 with Three and Six Month Lag",y="Spending per Eligible",x="Date")
+  geom_line(aes(x=Date,y=SpendPerElig_02,group=1),color="black")+
+  geom_line(aes(x=Date,y=three_month,group=1),color="red")+
+  geom_line(aes(x=Date,y=six_month,group=1),color="blue")+
+  labs(title="Spending on Outpatient Hospital per Elig with Three and Six Month Lag by Group",y="Spending per Eligible",x="Date")+
+  facet_grid(Group~.,scales = "free")
 
-ggsave(device="jpeg",filename = "~/desktop/Example.jpg")
+ggsave(device="jpeg",filename = "~/desktop/Example_Relative.jpg")
+
+ggplot(Agg)+
+  geom_line(aes(x=Date,y=SpendPerElig_02,group=1),color="black")+
+  geom_line(aes(x=Date,y=three_month,group=1),color="red")+
+  geom_line(aes(x=Date,y=six_month,group=1),color="blue")+
+  labs(title="Spending on Outpatient Hospital per Elig with Three and Six Month Lag by Group",y="Spending per Eligible",x="Date")+
+  facet_grid(Group~.)
+
+ggsave(device="jpeg",filename = "~/desktop/Example_Absolute.jpg")
 
