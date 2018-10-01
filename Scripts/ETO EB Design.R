@@ -261,6 +261,39 @@ table(NonPartFrame_dedupe$segment)
 NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha:]]+[[:space:]]","",segment),Size=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n()) %>% data.frame()
 # write.xlsx(NonPartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Non-Participants",row.names = FALSE)
 
+# sample comparison
+onlycommercial<-population %>% 
+  filter(commercial==1) %>% 
+  left_join(counties,by=c("et_zip"="Zip.Code")) %>% 
+  left_join(regions,by="County")
+fullkwh<-as.data.frame(as.list(summary(onlycommercial$kwh2017)))
+row.names(fullkwh)<-"Population kWh"
+fulltherm<-as.data.frame(as.list(summary(onlycommercial$therms2017)))
+row.names(fulltherm)<-"Population Therms"
+
+fullnaics<-as.data.frame.table(table(onlycommercial$naicsgroup,exclude = NULL)/nrow(onlycommercial)*100)
+fullregion<-as.data.frame.table(table(onlycommercial$Regions.for.EB.Process,exclude = NULL)/nrow(onlycommercial)*100)
+
+nonpartsamp<-population %>% filter(commercial==1) %>% 
+  filter(et_siteid%in%NonPartFrame_dedupe$et_siteid) %>% 
+  left_join(counties,by=c("et_zip"="Zip.Code")) %>% 
+  left_join(regions,by="County")
+sampkwh<-as.data.frame(as.list(summary(nonpartsamp$kwh2017)))
+row.names(sampkwh)<-"Contact kWh"
+samptherm<-as.data.frame(as.list(summary(nonpartsamp$therms2017)))
+row.names(samptherm)<-"Contact Therms"
+
+sampnaics<-as.data.frame.table(table(nonpartsamp$naicsgroup,exclude = NULL)/nrow(nonpartsamp)*100)
+sampregion<-as.data.frame(table(nonpartsamp$Regions.for.EB.Process,exclude = NULL)/nrow(nonpartsamp)*100)
+
+usagecomp<-rbind(fullkwh,sampkwh,fulltherm,samptherm)
+naicscomp<-left_join(fullnaics,sampnaics,by="Var1",suffix=c(".Population",".Contacts"))
+regioncomp<-left_join(fullregion,sampregion,by="Var1",suffix=c(".Population",".Contacts"))
+
+write.xlsx(naicscomp,"/users/lehndorff/desktop/NonPart_Contact_Comparison.xlsx",row.names = FALSE,sheetName = "By Sector")
+write.xlsx(regioncomp,"/users/lehndorff/desktop/NonPart_Contact_Comparison.xlsx",row.names = FALSE,sheetName = "By Region",append = TRUE)
+write.xlsx(usagecomp,"/users/lehndorff/desktop/NonPart_Contact_Comparison.xlsx",row.names = TRUE,sheetName = "Usage Comparison",append = TRUE)
+
 # write out frame by naics group
 # write.csv(NonPartFrame_dedupe,"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_NonPart_Frame.csv",row.names = FALSE)
 
