@@ -6,6 +6,30 @@ library(ggplot2)
 library(caTools)
 library(forecast)
 
+add_forcast<-function(data,groups,var_to_cast){
+  output<-NULL
+  for(i in groups){
+    data_sub<-data %>% 
+      filter(Group==i) 
+    
+    start_month<-last(data_sub$FiscalMonth)
+    start_year<-last(data_sub$FiscalYear)
+
+    data_for_cast<-data_sub%>% select(var_to_cast)
+    
+    six_month<-as.vector(forecast(auto.arima(data_for_cast[,1]),h=6)$mean)
+    
+   FiscalYear<-rep(start_year,6)
+   FiscalMonth<-(start_month+1):(start_month+6)
+   Group<-rep(i,6)
+   
+   group_out<-as.data.frame(cbind(as.data.frame(FiscalYear),FiscalMonth,Group,six_month))
+   output<-bind_rows(output,group_out)
+  }
+
+  full_out<-bind_rows(data,output)
+}
+
 enrollment<-read.csv("/volumes/Projects/Alaska DHSS/SpendingPerMemberReporting/FY2017_Enrollment.csv",stringsAsFactors = FALSE)
 enrollment$merge<-paste(enrollment$BSysID,enrollment$FiscalYear,enrollment$FiscalMonth,sep="-")
 
@@ -125,8 +149,6 @@ AllSpendbyAll<-enroll_spending %>%
   mutate(Date=factor(paste(FiscalYear,FiscalMonth,sep="-"),levels = paste(FiscalYear,FiscalMonth,sep="-"))) %>% 
   ungroup()
 
-
-
 FullData<-bind_rows(AllSpendbyGroup,AllSpendbyAll)%>%
   select(FiscalYear,FiscalMonth,Group,contains("02")) %>% 
   group_by(Group) %>% 
@@ -175,29 +197,4 @@ ggplot(ForPlot)+
 
 ggplot(AllSpendbyGroup %>% filter(Group!="Not Defined"))+
   geom_bar(stat = "identity",position="dodge",aes(x=Date,y=SpendPerElig_01,fill=Group))
-
-add_forcast<-function(data,groups,var_to_cast){
-  output<-NULL
-  for(i in groups){
-    data_sub<-data %>% 
-      filter(Group==i) 
-    
-    start_month<-last(data_sub$FiscalMonth)
-    start_year<-last(data_sub$FiscalYear)
-
-    data_for_cast<-data_sub%>% select(var_to_cast)
-    
-    six_month<-as.vector(forecast(auto.arima(data_for_cast[,1]),h=6)$mean)
-    
-   FiscalYear<-rep(start_year,6)
-   FiscalMonth<-(start_month+1):(start_month+6)
-   Group<-rep(i,6)
-   
-   group_out<-as.data.frame(cbind(as.data.frame(FiscalYear),FiscalMonth,Group,six_month))
-   output<-bind_rows(output,group_out)
-  }
-
-  full_out<-bind_rows(data,output)
-}
-
 
