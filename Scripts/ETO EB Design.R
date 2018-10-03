@@ -304,13 +304,23 @@ infousa_dedupe$CostarOwnerPhone[infousa_dedupe$CostarOwnerPhone%in%infousa_dedup
 
 test<-subset(infousa_dedupe,CostarOwnerPhone%in%dup_phones$phone_match[dup_phones$phone_freq>1]|infophone%in%dup_phones$phone_match[dup_phones$phone_freq>1])
 
+# eliminate participant phone numbers
+partphones<-unique(c(
+  gsub("[^0-9]","",PartFrame_dedupe$C1_phone),
+  gsub("[^0-9]","",PartFrame_dedupe$C2_phone),
+  gsub("[^0-9]","",PartFrame_dedupe$C3_phone)
+  ))
+
+infousa_dedupe$CostarOwnerPhone[infousa_dedupe$CostarOwnerPhone%in%partphones[partphones!=""]]<-"PARTICIPANT PHONE NUMBER REMOVED"
+infousa_dedupe$InfousaPhone[infousa_dedupe$infophone%in%partphones[partphones!=""]]<-"PARTICIPANT PHONE NUMBER REMOVED"
+
 non_part_out<-infousa_dedupe %>% select(colnames(NonPartFrame_dedupe),"phone_freq.costar","phone_name_freq.costar","phone_freq.infoUSA","phone_name_freq.infoUSA",-infophone,-infophonename)
 
 # summary table
 NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha:]]+[[:space:]]","",segment),Size=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n()) %>% data.frame()
 # write.xlsx(NonPartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Non-Participants",row.names = FALSE)
 
-# write.csv(non_part_out,"/volumes/projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_non_part_frame_1002.csv",row.names = FALSE)
+# write.csv(non_part_out,"/volumes/projects/430011 - ETO Existing Buildings/Data/Sample Frames/Non_Part_Frame_1002.csv",row.names = FALSE)
 
 # sample comparison
 onlycommercial<-population %>% 
