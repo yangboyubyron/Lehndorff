@@ -1,0 +1,413 @@
+---
+title: "Alaska Medicaid Forecast"
+author: "Evergreen Economics"
+date: "10/2/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,fig.width = 9,fig.height=7,warning = FALSE,error = FALSE)
+```
+
+```{r data,include=FALSE,warning=FALSE}
+library(xlsx)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(caTools)
+library(forecast)
+
+add_forcast<-function(data,groups,var_to_cast,obs,match_data=TRUE){
+  output<-NULL
+  for(i in groups){
+    data_sub<-data %>% 
+      filter(Group==i) 
+    
+    start_date<-last(data_sub$Date)
+    
+    data_for_cast<-data_sub%>% select(var_to_cast)
+
+    six_month<-as.data.frame(forecast(auto.arima(data_for_cast),h=obs))
+    six_month$Group<-i
+    six_month$FORECASTED<-six_month$`Point Forecast`
+    six_month$Date<-start_date+months(1:obs)
+    six_month$CalendarYear<-year(six_month$Date)
+    six_month$CalendarMonth<-month(six_month$Date)
+    
+    colnames(six_month)[colnames(six_month)=="FORECASTED"]<-var_to_cast
+    
+   output<-bind_rows(output,six_month)
+  }
+
+  full_out<-bind_rows(data,output)
+  ifelse(match_data,return(full_out),return(output))
+}
+
+monthcon<-read.csv("/volumes/Projects/Alaska DHSS/AK_FiscalMonth_CalMonth.csv",stringsAsFactors = FALSE)
+spendcon<-read.csv("/volumes/Projects/Alaska DHSS/AK_Spending_Categories.csv",stringsAsFactors = FALSE) %>% filter(Variable_Label!="control")
+
+# enrollment
+enrollment2017<-read.csv("/volumes/Projects/Alaska DHSS/SpendingPerMemberReporting/FY2017_Enrollment.csv",stringsAsFactors = FALSE)
+enrollment2018<-read.csv("/volumes/Projects/Alaska DHSS/FY2018_Enrollment.csv",stringsAsFactors = FALSE)
+
+enrollment<-bind_rows(enrollment2017,enrollment2018)
+rm(enrollment2017,enrollment2018)
+enrollment$merge<-paste(enrollment$BSysID,enrollment$FiscalYear,enrollment$FiscalMonth,sep="-")
+
+# spending
+spending2017<-read.csv("/volumes/Projects/Alaska DHSS/SpendingPerMemberReporting/FY2017_Spending.csv",stringsAsFactors = FALSE)
+spending2018<-read.csv("/volumes/Projects/Alaska DHSS/FY2018_Spending.csv",stringsAsFactors = FALSE)
+
+spending<-bind_rows(spending2017,spending2018)
+rm(spending2017,spending2018)
+spending$merge<-paste(spending$BSysID,spending$FiscalYear,spending$FiscalMonth,sep="-")
+
+# merge
+enroll_spending<-left_join(enrollment,spending %>% select(-BSysID,-FiscalYear,-FiscalMonth),by="merge") %>% left_join(monthcon,by="FiscalMonth")
+enroll_spending$CalendarYear<-enroll_spending$FiscalYear
+enroll_spending$CalendarYear[enroll_spending$FiscalMonth<enroll_spending$CalendarMonth]<-enroll_spending$CalendarYear[enroll_spending$FiscalMonth<enroll_spending$CalendarMonth]-1
+rm(enrollment,spending)
+
+# enrollment groups
+enroll_spending$Group<-"Not Defined"
+enroll_spending$Group[enroll_spending$Age<20]<-"Children"
+enroll_spending$Group[enroll_spending$Age>=20&enroll_spending$Age<65&enroll_spending$ElgClass=="88"]<-"Expansion"
+enroll_spending$Group[enroll_spending$Age>=20&enroll_spending$Age<65&enroll_spending$ElgClass!="88"&enroll_spending$ElgClass!="56"&enroll_spending$ElgClass!="54"&enroll_spending$ElgClass!="52"&enroll_spending$ElgClass!="50"]<-"Non-Exp Adults"
+enroll_spending$Group[enroll_spending$Age>=65|(enroll_spending$Age>=20&enroll_spending$Age<65&(enroll_spending$ElgClass=="56"|enroll_spending$ElgClass=="54"|enroll_spending$ElgClass=="52"|enroll_spending$ElgClass=="50"))]<-"Senior or Disabled"
+
+table(enroll_spending$ElgClass[enroll_spending$Group=="Not Defined"],is.na(enroll_spending$Age[enroll_spending$Group=="Not Defined"]))
+table(enroll_spending$Group)
+
+# spending by group
+AllSpendbyGroup<-enroll_spending %>% 
+  filter(Group!="Not Defined") %>%
+  group_by(FiscalYear,FiscalMonth,CalendarYear,CalendarMonth,Group) %>% 
+  summarise(
+    CountElig=n_distinct(BSysID[!is.na(Spend01)]),
+    SpendPerElig_01=sum(Spend01,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend01)]),
+    SpendPerElig_02=sum(Spend02,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend02)]),
+    SpendPerElig_03=sum(Spend03,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend03)]),
+    SpendPerElig_04=sum(Spend04,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend04)]),
+    SpendPerElig_05=sum(Spend05,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend05)]),
+    SpendPerElig_06=sum(Spend06,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend06)]),
+    SpendPerElig_07=sum(Spend07,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend07)]),
+    SpendPerElig_08=sum(Spend08,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend08)]),
+    SpendPerElig_09=sum(Spend09,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend09)]),
+    SpendPerElig_10=sum(Spend10,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend10)]),
+    SpendPerElig_11=sum(Spend11,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend11)]),
+    SpendPerElig_12=sum(Spend12,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend12)]),
+    SpendPerElig_13=sum(Spend13,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend13)]),
+    SpendPerElig_14=sum(Spend14,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend14)]),
+    SpendPerElig_15=sum(Spend15,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend15)]),
+    SpendPerElig_16=sum(Spend16,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend16)]),
+    SpendPerElig_17=sum(Spend17,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend17)]),
+    SpendPerElig_18=sum(Spend18,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend18)]),
+    SpendPerElig_19=sum(Spend19,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend19)]),
+    SpendPerElig_20=sum(Spend20,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend20)]),
+    StatePerElig_01=sum(StateSpend01,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend01)]),
+    StatePerElig_02=sum(StateSpend02,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend02)]),
+    StatePerElig_03=sum(StateSpend03,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend03)]),
+    StatePerElig_04=sum(StateSpend04,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend04)]),
+    StatePerElig_05=sum(StateSpend05,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend05)]),
+    StatePerElig_06=sum(StateSpend06,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend06)]),
+    StatePerElig_07=sum(StateSpend07,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend07)]),
+    StatePerElig_08=sum(StateSpend08,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend08)]),
+    StatePerElig_09=sum(StateSpend09,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend09)]),
+    StatePerElig_10=sum(StateSpend10,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend10)]),
+    StatePerElig_11=sum(StateSpend11,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend11)]),
+    StatePerElig_12=sum(StateSpend12,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend12)]),
+    StatePerElig_13=sum(StateSpend13,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend13)]),
+    StatePerElig_14=sum(StateSpend14,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend14)]),
+    StatePerElig_15=sum(StateSpend15,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend15)]),
+    StatePerElig_16=sum(StateSpend16,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend16)]),
+    StatePerElig_17=sum(StateSpend17,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend17)]),
+    StatePerElig_18=sum(StateSpend18,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend18)]),
+    StatePerElig_19=sum(StateSpend19,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend19)]),
+    StatePerElig_20=sum(StateSpend20,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend20)])
+    ) %>% 
+  group_by(Group) %>% 
+  mutate(Date=factor(paste(FiscalYear,FiscalMonth,sep="-"),levels = paste(FiscalYear,FiscalMonth,sep="-"))) %>% 
+  ungroup()
+
+# spending by all enrollees
+AllSpendbyAll<-enroll_spending %>% 
+  filter(Group!="Not Defined") %>%
+  group_by(FiscalYear,FiscalMonth,CalendarYear,CalendarMonth,Group="All Enrollees") %>% 
+  summarise(
+    CountElig=n_distinct(BSysID[!is.na(Spend01)]),
+    SpendPerElig_01=sum(Spend01,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend01)]),
+    SpendPerElig_02=sum(Spend02,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend02)]),
+    SpendPerElig_03=sum(Spend03,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend03)]),
+    SpendPerElig_04=sum(Spend04,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend04)]),
+    SpendPerElig_05=sum(Spend05,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend05)]),
+    SpendPerElig_06=sum(Spend06,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend06)]),
+    SpendPerElig_07=sum(Spend07,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend07)]),
+    SpendPerElig_08=sum(Spend08,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend08)]),
+    SpendPerElig_09=sum(Spend09,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend09)]),
+    SpendPerElig_10=sum(Spend10,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend10)]),
+    SpendPerElig_11=sum(Spend11,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend11)]),
+    SpendPerElig_12=sum(Spend12,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend12)]),
+    SpendPerElig_13=sum(Spend13,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend13)]),
+    SpendPerElig_14=sum(Spend14,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend14)]),
+    SpendPerElig_15=sum(Spend15,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend15)]),
+    SpendPerElig_16=sum(Spend16,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend16)]),
+    SpendPerElig_17=sum(Spend17,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend17)]),
+    SpendPerElig_18=sum(Spend18,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend18)]),
+    SpendPerElig_19=sum(Spend19,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend19)]),
+    SpendPerElig_20=sum(Spend20,na.rm = TRUE)/n_distinct(BSysID[!is.na(Spend20)]),
+    StatePerElig_01=sum(StateSpend01,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend01)]),
+    StatePerElig_02=sum(StateSpend02,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend02)]),
+    StatePerElig_03=sum(StateSpend03,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend03)]),
+    StatePerElig_04=sum(StateSpend04,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend04)]),
+    StatePerElig_05=sum(StateSpend05,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend05)]),
+    StatePerElig_06=sum(StateSpend06,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend06)]),
+    StatePerElig_07=sum(StateSpend07,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend07)]),
+    StatePerElig_08=sum(StateSpend08,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend08)]),
+    StatePerElig_09=sum(StateSpend09,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend09)]),
+    StatePerElig_10=sum(StateSpend10,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend10)]),
+    StatePerElig_11=sum(StateSpend11,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend11)]),
+    StatePerElig_12=sum(StateSpend12,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend12)]),
+    StatePerElig_13=sum(StateSpend13,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend13)]),
+    StatePerElig_14=sum(StateSpend14,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend14)]),
+    StatePerElig_15=sum(StateSpend15,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend15)]),
+    StatePerElig_16=sum(StateSpend16,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend16)]),
+    StatePerElig_17=sum(StateSpend17,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend17)]),
+    StatePerElig_18=sum(StateSpend18,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend18)]),
+    StatePerElig_19=sum(StateSpend19,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend19)]),
+    StatePerElig_20=sum(StateSpend20,na.rm = TRUE)/n_distinct(BSysID[!is.na(StateSpend20)])
+    ) %>% 
+  group_by(Group) %>% 
+  mutate(Date=factor(paste(FiscalYear,FiscalMonth,sep="-"),levels = paste(FiscalYear,FiscalMonth,sep="-"))) %>% 
+  ungroup()
+
+for (i in spendcon$Variable_Label){
+  FullData<-bind_rows(AllSpendbyGroup,AllSpendbyAll)%>%
+    select(FiscalYear,FiscalMonth,CalendarYear,CalendarMonth,Group,contains(i))
+  
+  colnames(FullData)<-c(colnames(FullData)[1:5],"Spend","State","ERROR")[1:ncol(FullData)]
+  
+  FullData1<-FullData %>% 
+  group_by(Group) %>% 
+  mutate(
+    Date=as.Date(paste(CalendarYear,CalendarMonth,"01",sep = "-")),
+    three_month=runmean(Spend,3,align = "right",endrule = "NA"),
+    six_month=runmean(Spend,6,align = "right",endrule = "NA"),
+    order=1:n()) %>%
+  ungroup()
+  
+  ForPlot<-add_forcast(data=FullData1,groups = unique(FullData$Group),var_to_cast = "six_month",obs = 3,match_data = TRUE)
+  
+  max_date<-max(ForPlot$Date[!is.na(ForPlot$FiscalYear)])
+  
+  ForPlot$`Lo 80`[ForPlot$Date==max_date]<-ForPlot$six_month[ForPlot$Date==max_date]
+  ForPlot$`Hi 80`[ForPlot$Date==max_date]<-ForPlot$six_month[ForPlot$Date==max_date]
+  ForPlot$`Lo 95`[ForPlot$Date==max_date]<-ForPlot$six_month[ForPlot$Date==max_date]
+  ForPlot$`Hi 95`[ForPlot$Date==max_date]<-ForPlot$six_month[ForPlot$Date==max_date]
+  
+  SpendCat<-spendcon$Spending_Cat[spendcon$Variable_Label==i]
+  
+  cols<-c("Actual"="#666666","3-Month MA"="red","6-Month MA"="blue","2019"="yellow","2018"="green","2017"="purple")
+  shape<-c("Actual"=17,"Forecasted 6-Month MA"=24)
+  
+  FY_day_range<-ForPlot %>% group_by(FiscalYear) %>% summarise(start=min(as.numeric(Date)),end=max(as.numeric(Date)))
+  
+  plot_days<-min(as.numeric(ForPlot$Date)):max(as.numeric(ForPlot$Date))
+  plot_back<-as.data.frame(plot_days)
+  plot_back$FY<-NA
+  plot_back$FY[plot_back$plot_days>=17713&is.na(plot_back$FY)]<-2019
+  plot_back$FY[plot_back$plot_days>=17348&is.na(plot_back$FY)]<-2018
+  plot_back$FY[plot_back$plot_days>=16983&is.na(plot_back$FY)]<-2017
+
+  SpendPlot<-ggplot(ForPlot)+
+    # geom_rect(aes(xmin=as.Date("2017-07-01"),xmax=as.Date("2018-06-30"),ymin=min(Spend,na.rm = TRUE),ymax=max(Spend,na.rm = TRUE)))+
+    geom_vline(data=subset(plot_back,FY==2017),aes(xintercept = plot_days),color="yellow",size=1,alpha=.2)+
+    geom_vline(data=subset(plot_back,FY==2018),aes(xintercept = plot_days),color="orange",size=1,alpha=.2)+
+    geom_vline(data=subset(plot_back,FY==2019),aes(xintercept = plot_days),color="purple",size=1,alpha=.2)+
+    geom_line(aes(x=Date,y=Spend,group=1,color="Actual"),linetype=3)+
+    geom_point(aes(x=Date,y=Spend,group=1),color="black",shape=17)+
+    geom_line(aes(x=Date,y=three_month,group=1,color="3-Month MA"),linetype=2)+
+    geom_line(data=subset(ForPlot,!is.na(FiscalYear)),aes(x=Date,y=six_month,group=1,color="6-Month MA"),linetype=2)+
+    # geom_point(data=subset(ForPlot,is.na(FiscalYear)),aes(x=Date,y=six_month,group=1,shape="Forecasted 6-Month MA",color="6-Month MA"))+
+    geom_ribbon(data=subset(ForPlot,!is.na(`Lo 80`)),aes(x=Date,ymin=`Lo 95`,ymax=`Hi 95`),fill="light blue")+
+    geom_ribbon(data=subset(ForPlot,!is.na(`Lo 80`)),aes(x=Date,ymin=`Lo 80`,ymax=`Hi 80`),fill="blue")+
+    scale_x_date(date_labels = "%b-%Y",date_breaks = "3 month",limits = c(min(as.Date(ForPlot$Date)),max(as.Date(ForPlot$Date))))+
+    scale_y_continuous(labels = scales::dollar)+
+    scale_color_manual(name="Interval",values=cols)+
+    # scale_shape_manual(name="Actual / Forecasted",values = shape)+
+    labs(title=paste("Spending Per Member on", SpendCat),y="Spending per Member (scales vary by membership group)",x="Date")+
+    theme(plot.title = element_text(hjust = 0.5))+
+    facet_grid(Group~.,scales="free")
+  
+  output<-setNames(list(ForPlot,SpendPlot),paste(c("PlotData_","SpendPlot_"),i,sep=""))
+  
+  list2env(output,envir = globalenv())
+  
+  rm(FullData,FullData1,ForPlot,output,SpendPlot)
+}
+
+```
+
+##Spending Per Member {.tabset .tabset-fade}
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="01"]  `
+
+```{r "01",include=TRUE,warning=FALSE}
+
+print(SpendPlot_01)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="02"]  `
+
+```{r "02",include=TRUE,warning=FALSE}
+
+print(SpendPlot_02)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="03"]  `
+
+```{r "03",include=TRUE,warning=FALSE}
+
+print(SpendPlot_03)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="04"]  `
+
+```{r "04",include=TRUE,warning=FALSE}
+
+print(SpendPlot_04)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="05"]  `
+
+```{r "05",include=TRUE,warning=FALSE}
+
+print(SpendPlot_05)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="06"]  `
+
+```{r "06",include=TRUE,warning=FALSE}
+
+print(SpendPlot_06)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="07"]  `
+
+```{r "07",include=TRUE,warning=FALSE}
+
+print(SpendPlot_07)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="08"]  `
+
+```{r "08",include=TRUE,warning=FALSE}
+
+print(SpendPlot_08)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="09"]  `
+
+```{r "09",include=TRUE,warning=FALSE}
+
+print(SpendPlot_09)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="10"]  `
+
+```{r "10",include=TRUE,warning=FALSE}
+
+print(SpendPlot_10)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="11"]  `
+
+```{r "11",include=TRUE,warning=FALSE}
+
+print(SpendPlot_11)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="12"]  `
+
+```{r "12",include=TRUE,warning=FALSE}
+
+print(SpendPlot_12)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="13"]  `
+
+```{r "13",include=TRUE,warning=FALSE}
+
+print(SpendPlot_13)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="14"]  `
+
+```{r "14",include=TRUE,warning=FALSE}
+
+print(SpendPlot_14)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="15"]  `
+
+```{r "15",include=TRUE,warning=FALSE}
+
+print(SpendPlot_15)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="16"]  `
+
+```{r "16",include=TRUE,warning=FALSE}
+
+print(SpendPlot_16)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="17"]  `
+
+```{r "17",include=TRUE,warning=FALSE}
+
+print(SpendPlot_17)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="18"]  `
+
+```{r "18",include=TRUE,warning=FALSE}
+
+print(SpendPlot_18)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="19"]  `
+
+```{r "19",include=TRUE,warning=FALSE}
+
+print(SpendPlot_19)
+
+```
+
+###`r spendcon$Spending_Cat[spendcon$Variable_Label=="20"]  `
+
+```{r "20",include=TRUE,warning=FALSE}
+
+print(SpendPlot_20)
+
+```
+
+
+
