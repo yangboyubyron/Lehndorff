@@ -30,6 +30,9 @@ add_forcast<-function(data,groups,var_to_cast){
   full_out<-bind_rows(data,output)
 }
 
+monthcon<-read.csv("/volumes/Projects/Alaska DHSS/AK_FiscalMonth_CalMonth.csv",stringsAsFactors = FALSE)
+spendcon<-read.csv("/volumes/Projects/Alaska DHSS/AK_Spending_Categories.csv",stringsAsFactors = FALSE) %>% filter(Variable_Label!="control")
+
 enrollment<-read.csv("/volumes/Projects/Alaska DHSS/SpendingPerMemberReporting/FY2017_Enrollment.csv",stringsAsFactors = FALSE)
 enrollment$merge<-paste(enrollment$BSysID,enrollment$FiscalYear,enrollment$FiscalMonth,sep="-")
 
