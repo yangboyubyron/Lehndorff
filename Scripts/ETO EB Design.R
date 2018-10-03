@@ -232,14 +232,21 @@ table(NonPartPop$naicsgroup)
 
 table(substr(NonPartPop$naics_code[NonPartPop$naicsgroup==999],1,2),exclude = FALSE)
 
-# MMBtu
-NonPartPop$MMBtu<-rowSums(NonPartPop %>% select(kwh2017,therms2017) %>% mutate(kwh2017=kwh2017*0.0034121412,therms2017=therms2017*.1),na.rm = TRUE) 
-summary(NonPartPop$MMBtu)
+# Size
+NonPartPop$elec_fuel_size<-"Unknown Size"
+NonPartPop$elec_fuel_size[!is.na(NonPartPop$kwh2017)&NonPartPop$kwh2017>0]<-"Large"
+NonPartPop$elec_fuel_size[NonPartPop$kwh2017<500000&!is.na(NonPartPop$kwh2017)&NonPartPop$kwh2017>0]<-"Medium"
+NonPartPop$elec_fuel_size[NonPartPop$kwh2017<50000&!is.na(NonPartPop$kwh2017)&NonPartPop$kwh2017>0]<-"Small"
+NonPartPop$gas_fuel_size<-"Unknown Size"
+NonPartPop$gas_fuel_size[!is.na(NonPartPop$therms2017)&NonPartPop$therms2017>0]<-"Large"
+NonPartPop$gas_fuel_size[NonPartPop$therms2017<50000&!is.na(NonPartPop$therms2017)&NonPartPop$therms2017>0]<-"Medium"
+NonPartPop$gas_fuel_size[NonPartPop$therms2017<10000&!is.na(NonPartPop$therms2017)&NonPartPop$therms2017>0]<-"Small"
 
-NonPartPop$sizegroup<-"Large"
-NonPartPop$sizegroup[NonPartPop$MMBtu<1000]<-"Medium"
-NonPartPop$sizegroup[NonPartPop$MMBtu<100]<-"Small"
-table(NonPartPop$sizegroup)
+NonPartPop$fuel_comb<-paste(NonPartPop$elec_fuel_size,NonPartPop$gas_fuel_size)
+NonPartPop$sizegroup<-"Unknown"
+NonPartPop$sizegroup[grepl("Large",NonPartPop$fuel_comb)]<-"Large"
+NonPartPop$sizegroup[grepl("Medium",NonPartPop$fuel_comb)]<-"Medium"
+NonPartPop$sizegroup[grepl("Small",NonPartPop$fuel_comb)]<-"Small"
 
 NonPartPop$segment<-paste(NonPartPop$sizegroup,NonPartPop$naicsgroup,sep = " ")
 table(NonPartPop$segment)
@@ -256,10 +263,54 @@ NonPartFrame_dedupe<-NonPartFrame %>%
 
 table(NonPartFrame_dedupe$segment)
 
-# summary table
+# dedupe 2
+dup_phones<-as.data.frame.table(table(c(gsub("-","",NonPartFrame_dedupe$InfousaPhone),NonPartFrame_dedupe$CostarOwnerPhone)))
+dup_phones$phone_match<-as.character(dup_phones$Var1)
+dup_phones$phone_freq<-as.character(dup_phones$Freq)
+dup_phones<-select(dup_phones,phone_match,phone_freq) %>% filter(phone_match!="")
 
+dup_phone_name<-as.data.frame.table(
+  table(
+    c(
+      paste(NonPartFrame_dedupe$CostarOwnerContact,NonPartFrame_dedupe$CostarOwnerPhone),
+      paste(NonPartFrame_dedupe$InfousaContactName,gsub("-","",NonPartFrame_dedupe$InfousaPhone)))))
+dup_phone_name$phone_name_match<-as.character(dup_phone_name$Var1)
+dup_phone_name$phone_name_freq<-as.character(dup_phone_name$Freq)
+dup_phone_name<-select(dup_phone_name,phone_name_match,phone_name_freq) %>% filter(phone_name_match!=" ")
+
+NonPartFrame_dedupe$costarphonename<-paste(NonPartFrame_dedupe$CostarOwnerContact,NonPartFrame_dedupe$CostarOwnerPhone)
+NonPartFrame_dedupe$infophone<-gsub("-","",NonPartFrame_dedupe$InfousaPhone)
+NonPartFrame_dedupe$infophonename<-paste(NonPartFrame_dedupe$InfousaContactName,gsub("-","",NonPartFrame_dedupe$InfousaPhone))
+
+costar_dedupe<-NonPartFrame_dedupe %>% 
+  left_join(dup_phones,by=c("CostarOwnerPhone"="phone_match")) %>% 
+  left_join(dup_phone_name,by=c("costarphonename"="phone_name_match")) %>% 
+  group_by(CostarOwnerPhone) %>% 
+  mutate(it=1:n())
+
+costar_dedupe$it[is.na(costar_dedupe$phone_freq)]<-NA
+costar_dedupe$CostarOwnerPhone[costar_dedupe$it>1&!is.na(costar_dedupe$it)]<-paste("DUPLICATE! -",costar_dedupe$CostarOwnerPhone[costar_dedupe$it>1&!is.na(costar_dedupe$it)])
+
+infousa_dedupe<-costar_dedupe %>% 
+  left_join(dup_phones,by=c("infophone"="phone_match"),suffix=c(".costar",".infoUSA")) %>% 
+  left_join(dup_phone_name,by=c("infophonename"="phone_name_match"),suffix=c(".costar",".infoUSA")) %>% 
+  group_by(InfousaPhone) %>% 
+  mutate(it2=1:n())
+
+infousa_dedupe$it2[is.na(infousa_dedupe$phone_freq.infoUSA)]<-NA
+infousa_dedupe$InfousaPhone[infousa_dedupe$it2>1&!is.na(infousa_dedupe$it2)]<-paste("DUPLICATE! -",infousa_dedupe$InfousaPhone[infousa_dedupe$it2>1&!is.na(infousa_dedupe$it2)])
+
+infousa_dedupe$CostarOwnerPhone[infousa_dedupe$CostarOwnerPhone%in%infousa_dedupe$infophone&infousa_dedupe$CostarOwnerPhone!=""]<-paste("DUPLICATE! -",infousa_dedupe$CostarOwnerPhone[infousa_dedupe$CostarOwnerPhone%in%infousa_dedupe$infophone&infousa_dedupe$CostarOwnerPhone!=""])
+
+test<-subset(infousa_dedupe,CostarOwnerPhone%in%dup_phones$phone_match[dup_phones$phone_freq>1]|infophone%in%dup_phones$phone_match[dup_phones$phone_freq>1])
+
+non_part_out<-infousa_dedupe %>% select(colnames(NonPartFrame_dedupe),"phone_freq.costar","phone_name_freq.costar","phone_freq.infoUSA","phone_name_freq.infoUSA",-infophone,-infophonename)
+
+# summary table
 NonPartFrame_summary<-NonPartFrame_dedupe %>% group_by(NAICS_Group=sub("[[:alpha:]]+[[:space:]]","",segment),Size=sub("[[:space:]][[:alpha:]]+","",segment),segment) %>% summarise(count_of_contacts=n()) %>% data.frame()
 # write.xlsx(NonPartFrame_summary,"/Users/Lehndorff/desktop/ETO_EB_Interview_Summary.xlsx",append = TRUE,sheetName = "Non-Participants",row.names = FALSE)
+
+# write.csv(non_part_out,"/volumes/projects/430011 - ETO Existing Buildings/Data/Sample Frames/Initial_non_part_frame_1002.csv",row.names = FALSE)
 
 # sample comparison
 onlycommercial<-population %>% 
@@ -410,7 +461,8 @@ nontrade$Use_phone[nontrade$ContactHomePhone!=""&is.na(nontrade$Use_phone)]<-non
 nontrade$Use_phone[nontrade$CompanyPhone!=""&is.na(nontrade$Use_phone)]<-nontrade$CompanyPhone[nontrade$CompanyPhone!=""&is.na(nontrade$Use_phone)]
 
 nontrade_con<-nontrade %>%
-  filter(contactinfo==1&!is.na(Use_phone)) %>% 
+  # filter(contactinfo==1&!is.na(Use_phone)) %>%
+  filter(CompanyName!="") %>% 
   arrange(desc(ContactFirstName)) %>% 
   group_by(Account=accountnumber,Company=CompanyName) %>% 
   mutate(order=1:n()) %>%
@@ -426,7 +478,7 @@ cont_con_dupe1$keep<-FALSE
 cont_con_dupe1$keep[cont_con_dupe1$dupe==1|cont_con_dupe1$Contact_Name==" "|cont_con_dupe1$Contact_Name=="Accounts Receivable"]<-TRUE
 
 cont_con<-cont_con_dupe1 %>% filter(keep) %>% 
-  arrange(priority) %>% group_by(Contact_Phone) %>% mutate(dupe=1:n()) %>% filter(dupe==1) %>% select(-dupe,-min,-keep,-priority)
+  arrange(priority) %>% group_by(Contact_Phone) %>% mutate(dupe=1:n()) %>% filter(dupe==1|is.na(Contact_Phone)) %>% select(-dupe,-min,-keep,-priority)
 
 # contractor projects
 projects$zip<-as.numeric(substr(projects$et_zipplus4,1,5))
