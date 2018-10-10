@@ -525,6 +525,7 @@ cont_frame_out<-cont_frame %>% filter(Activity!="Inactive"&!drop_ally) %>%  sele
 table(cont_frame_out$Company%in%trade$TradeAllyName,cont_frame_out$Ally)
 
 # write.csv(cont_frame_out,row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Contractor_Frame_0921.csv")
+# write.csv(cont_frame_out %>% filter(is.na(Contact_Phone)),row.names = FALSE,file="/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Non_Ally_No_Phone_1004.csv")
 
 # for Phil 0920
 proj_agg<-projects %>% 
