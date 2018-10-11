@@ -198,6 +198,36 @@ for (i in unique(PartFrame_dedupe$segment)){
   }
 }
 
+# Extra SEM sites
+ExtraSEM<-subset(projects,!et_siteid%in%PartFrame_dedupe$et_siteid&trackval==1&!impact_survey) %>% 
+  arrange(-workingkwh) %>% 
+  group_by(et_siteid) %>% mutate(Project_Name=projecttitle,Project_Address=et_streetaddress,recent_year=max(year),
+    county=first(et_county),sector=unique(Evergreen.categories),proj_incent=sum(measureincentive,na.rm = TRUE)) %>% filter(year==recent_year) %>% 
+  mutate(SEMrow=1:n()) %>% filter(SEMrow==1) %>% 
+  left_join(select(regions,-Trade.Ally.Region),by=c("county"="County")) %>% 
+  left_join(select(population,c(et_siteid,kwh2017,therms2017)),by="et_siteid") %>% 
+  data.frame()
+
+ESEM_Frame<-left_join(ExtraSEM,PartConagg,by="et_siteid") %>% filter(!is.na(Primary_Contact)) %>% filter(
+  !Primary_Contact%in%c(PartFrame_dedupe$Primary_Contact,PartFrame_dedupe$C2_Name,PartFrame_dedupe$C3_Name)&
+  !C1_email%in%c(PartFrame_dedupe$C1_email,PartFrame_dedupe$C2_email,PartFrame_dedupe$C3_email)&
+  !C1_phone%in%c(PartFrame_dedupe$C1_phone,PartFrame_dedupe$C2_phone,PartFrame_dedupe$C3_phone))
+
+ESEM_Frame_dedupe<-ESEM_Frame %>% arrange(year) %>% group_by(Primary_Contact) %>% 
+  mutate(SEMdrow=1:n(),segment=ifelse(year>=2016,"Recent SEM","Past SEM")) %>% filter(SEMdrow==1)
+
+ESEMout<-ESEM_Frame_dedupe %>% select("et_siteid","Project_Name","Project_Address","date","segment", "kwh2017","therms2017","Regions.for.EB.Process","sector","Primary_Contact","C1_Company","C1_phone","C1_email","C1_Current_as_of","C2_Name","C2_Company","C2_phone","C2_email","C3_Name","C3_Company","C3_phone","C3_email","sqft","yearbuilt") %>% data.frame()
+
+##double check new SEM
+sum(ESEMout$et_siteid%in%PartFrame_dedupe$et_siteid)==0
+sum(ESEMout$Primary_Contact%in%c(PartFrame_dedupe$Primary_Contact,PartFrame_dedupe$C2_Name,PartFrame_dedupe$C3_Name))==0
+sum(ESEMout$C1_email%in%c(PartFrame_dedupe$C1_email,PartFrame_dedupe$C2_email,PartFrame_dedupe$C3_email))==0
+sum(ESEMout$C1_phone%in%c(PartFrame_dedupe$C1_phone,PartFrame_dedupe$C2_phone,PartFrame_dedupe$C3_phone))==0
+sum(ESEMout$Project_Address%in%PartFrame_dedupe$Project_Address)==0
+
+# write.xlsx(ESEMout %>% filter(segment=="Recent SEM"),"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Extra_SEM_1010.xlsx",row.names = FALSE,sheetName = "Extra Recent SEM")
+# write.xlsx(ESEMout %>% filter(segment=="Past SEM"),"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Extra_SEM_1010.xlsx",row.names = FALSE,sheetName = "Extra Past SEM",append=TRUE)
+
 # non-parts
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
 
