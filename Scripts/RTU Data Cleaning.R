@@ -247,6 +247,52 @@ table(paste(RTUout3$CZ,RTUout3$Channel,sep=""))
 # write.csv(RTUout2,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE7_0801.csv",row.names = FALSE)
 # write.csv(RTUout3,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE8_0801.csv",row.names = FALSE)
 
+# Samples 9,10,11,12. Clear enviroment.
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",stringsAsFactors = FALSE)
+Sample5<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/4. Email/RTUdraft_SAMPLE5_0719.csv",stringsAsFactors = FALSE)
+Sample6<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE6_0801.csv",stringsAsFactors = FALSE)
+Sample7<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/6. email 1K/RTUdraft_SAMPLE7_0801.csv",stringsAsFactors = FALSE)
+Sample8<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/7. email 1K/RTUdraft_SAMPLE8_0801.csv",stringsAsFactors = FALSE)
+
+RTUdata<-RTUin
+
+set.seed(78429)
+RTUdata$samplable<-(RTUdata$strata=="3C"|RTUdata$strata=="12C")
+RTUpre<-RTUdata%>%
+  filter(
+    !local_government&!drop_A_pre0714&!drop_C_pre0714&Sample=="Not yet sampled"&validEmail!="No valid email"&
+      !EEID%in%Sample5$EEID&
+      !EEID%in%Sample6$EEID&
+      !EEID%in%Sample7$EEID&
+      !EEID%in%Sample8$EEID)%>%
+  group_by(samplable)%>%
+  mutate(rand=runif(length(strata),0,1),rank=rank(rand))
+
+RTUpre$select<-0
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"]<-1
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=2000&RTUpre$rank>1000&RTUpre$validEmail!="No valid email"]<-2
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=3000&RTUpre$rank>2000&RTUpre$validEmail!="No valid email"]<-3
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=4000&RTUpre$rank>3000&RTUpre$validEmail!="No valid email"]<-4
+
+table(RTUpre$select,RTUpre$strata)
+table(RTUpre$strata)
+table(RTUpre$select)
+
+RTUout1<-select(RTUpre%>%filter(select==1)%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata))
+RTUout2<-select(RTUpre%>%filter(select==2)%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata))
+RTUout3<-select(RTUpre%>%filter(select==3)%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata))
+RTUout4<-select(RTUpre%>%filter(select==4)%>%ungroup(),c(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata))
+
+table(paste(RTUout1$CZ,RTUout1$Channel,sep=""))
+table(paste(RTUout2$CZ,RTUout2$Channel,sep=""))
+table(paste(RTUout3$CZ,RTUout3$Channel,sep=""))
+table(paste(RTUout4$CZ,RTUout4$Channel,sep=""))
+
+# write.csv(RTUout1,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE9_1015.csv",row.names = FALSE)
+# write.csv(RTUout2,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE10_1015.csv",row.names = FALSE)
+# write.csv(RTUout3,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE11_1015.csv",row.names = FALSE)
+# write.csv(RTUout4,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE12_1015.csv",row.names = FALSE)
+
 # 2018 Data
 
 New2018<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/SMB Customer List 02062018.csv",stringsAsFactors=FALSE)
