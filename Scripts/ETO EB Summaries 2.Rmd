@@ -1,0 +1,420 @@
+---
+output: 
+  word_document:
+    reference_docx: ETO_summary_template.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+```
+
+```{r data, include=FALSE,warning=FALSE}
+library(xlsx)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(reshape2)
+library(cowplot)
+library(knitr)
+library(maps)
+
+Proj_Pop<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Project_info_for_Summaries.csv",stringsAsFactors = FALSE)
+State_adj<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/State_info_for_Summaries.csv",stringsAsFactors = FALSE)
+regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
+
+bound<-function(x,l,h){
+  data<-x
+  data[x<l]<-l
+  data[x>h]<-h
+  return(data)
+}
+
+chunk_page_break <- function(){
+
+  str <- "<w:r><w:br w:type=\"page\"/></w:r>"
+  class(str) <- "ooxml_chunk"
+  str
+}
+
+subset_plot<-function(data,size_group,track_group){
+  ggplot(subset(data,data[,track_group]&fuel_size==size_group) %>%
+    mutate(SEM=SEM*n/types,Custom=Custom*n/types,DI=DI*n/types,Standard=Standard*n/types,Lighting=Lighting*n/types) %>% 
+    select(-n,-types) %>% 
+    melt(id.vars = c("fuel_size","combo")))+
+  geom_bar(aes(x=combo,y=value,fill=variable),stat = "identity",position="stack")+
+  labs(x=NULL,y=NULL,fill=NULL,title=paste(size_group,track_group,sep = " "))+
+  guides(fill=FALSE)+
+  theme(axis.text.x=element_blank(),
+    plot.title = element_text(size = 7),
+    axis.text.y = element_text(size=6))
+}
+
+heat_data<-function(data=Proj_Pop,sector){
+  data %>%
+  filter(naicsgroup==sector) %>% 
+  filter(participation=="Participant") %>% 
+  group_by(fuel_size) %>% 
+  summarise(
+    SEM=mean(ifelse(SEM=="X",0,1)),
+    Custom=mean(ifelse(Custom=="X",0,1)),
+    DI=mean(ifelse(DI=="X",0,1)),
+    Standard=mean(ifelse(Standard=="X",0,1)),
+    Lighting=mean(ifelse(Lighting=="X",0,1))
+    ) %>% 
+  ungroup() %>% 
+  melt(id.vars="fuel_size")
+}
+
+combo_data<-function(data=Proj_Pop,sector){
+  data %>% 
+  filter(naicsgroup==sector) %>% 
+  filter(participation=="Participant") %>% 
+  filter(combo!="") %>% 
+  group_by(fuel_size,combo) %>% 
+  summarise(n=n()) %>% 
+  mutate(types=ifelse(combo=="",0,nchar(gsub("[^\r\n\t\f\v ]","",combo))+1),
+    SEM=grepl("SEM",combo),
+    Custom=grepl("Custom",combo),
+    DI=grepl("DI",combo),
+    Standard=grepl("Standard",combo),
+    Lighting=grepl("Lighting",combo))
+}
+
+table_data<-function(data=Proj_Pop,sector,for_plot=FALSE){
+  pop_dat<-data %>%
+    filter(naicsgroup==sector) %>% 
+    left_join(State_adj %>% filter(naicsgroup==sector),by="naicsgroup") %>% 
+    summarise(Sites=unique(Units),
+      GWh=(sum(kwh2017[participation=="Participant"],na.rm = TRUE)+sum(kwh2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6,
+      M_Therms=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6)
+    
+  part_dat<-data %>% 
+    filter(naicsgroup==sector) %>% 
+    filter(participation=="Participant") %>% 
+    summarise(Sites=n_distinct(et_siteid),GWh=sum(kwh2017,na.rm = TRUE)/1e6,M_Therms=sum(therms2017,na.rm = TRUE)/1e6)
+  
+  nonpart_dat<-pop_dat-part_dat
+  
+  save_dat<-data %>%
+    filter(naicsgroup==sector) %>% 
+    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,M_Therms=sum(Therms_savings)/1e6)
+  
+  full_dat<-bind_rows(pop_dat,nonpart_dat,part_dat,save_dat)
+  row.names(full_dat)<-c("Total (est)","Non-Participant", "Participant","Savings")
+  
+  if(for_plot==TRUE){
+    full_dat$pop<-row.names(full_dat)
+    plot_dat<-full_dat %>% filter(pop=="Participant"|pop=="Non-Participant") %>% melt(id.vars="pop")
+    
+    full_dat<-ggplot(plot_dat)+
+      geom_bar(aes(x=variable,y=value,fill=pop),stat = "identity",position = "fill")+
+      labs(y="Percentage",x="Metric",title="Distribution Between \nParticipants and Non-Participants",fill="Participation")+
+      scale_fill_manual(
+        values = c("#99CC33","darkorange"),
+        breaks = c("Participant","Non-Participant"),
+        labels = c("Participants","Non-Participants")
+      )+
+      scale_y_continuous(labels = scales::percent)+
+      theme(
+        text = element_text(size=8),
+        axis.text = element_text(size=6),
+        plot.title = element_text(size=10))+
+      coord_flip()
+  }
+  
+  return(full_dat)
+}
+
+map_plot<-function(data=Proj_Pop,sector){
+  map_dat<-data %>% 
+    filter(!grepl("multifamily",naicsgroup,ignore.case = TRUE)&naicsgroup!="Industrial") %>% 
+    filter(participation=="Participant") %>% 
+    group_by(Region) %>% 
+    summarise(
+      p_save=round(sum(kWh_savings[naicsgroup==sector])/sum(kWh_savings),3)*100,
+      p_use=round(sum(as.numeric(kwh2017[naicsgroup==sector]),na.rm = TRUE)/sum(as.numeric(kwh2017),na.rm = TRUE),3)*100,
+      save_ratio=ifelse(p_save<=.5&p_use<=.5,0,bound(log10(p_save/p_use),-2,2)),save_diff=bound(p_save-p_use,-10,10)
+      )
+  
+  map<-map_data('county') %>% subset(region == 'oregon') %>% left_join(regions %>% mutate(merge=tolower(County)),by=c("subregion"="merge"))
+  
+  map_out<-left_join(map,map_dat,by=c("Regions.for.EB.Process"="Region"))
+  
+  output<-ggplot(map_out)+
+    coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
+    geom_polygon(data = map_out, aes(x = long, y = lat, group = group,fill = save_diff), color = "black", size = .3)+
+    # scale_fill_gradient2(mid="white",high="red",low="blue",midpoint = 0,limits=c(-3,3))+
+    scale_fill_gradientn(colors = rev(c("#ff0000","#ff6666","white","#9ebbff","#004CFF")),limits=c(-10,10))+
+    labs(fill="Savings % - \nUsage %",title="Regional Variation:\n Difference of Subsector Participant Savings and \nSubsector Participant Usage")+
+    theme(axis.title = element_blank(),axis.text = element_blank(),axis.ticks = element_blank(),axis.line = element_blank(),
+    text = element_text(size=8),
+    plot.title = element_text(size=8))
+
+  return(output)
+}
+
+comb_funct<-function(data=combos,track,metric="percent"){
+  if(metric=="percent"){
+    comb_out<-data[as.vector(data[,track]==TRUE),] %>% 
+  group_by(Track=as.character(track),fuel_size) %>% 
+  summarise(
+    total=sum(n),
+    SEM=ifelse(track=="SEM",sum(0,n[types==1])/total,sum(n*SEM)/total),
+    Custom=ifelse(track=="Custom",sum(0,n[types==1])/total,sum(n*Custom)/total),
+    DI=ifelse(track=="DI",sum(0,n[types==1])/total,sum(n*DI)/total),
+    Standard=ifelse(track=="Standard",sum(0,n[types==1])/total,sum(n*Standard)/total),
+    Lighting=ifelse(track=="Lighting",sum(0,n[types==1])/total,sum(n*Lighting)/total),
+    Total=sum(n)/0
+    ) %>% 
+  select(-total) %>% 
+  melt(id.vars=c("Track","fuel_size"))
+    
+    return(comb_out)
+    }
+  if(metric=="count"){
+    comb_out<-data[as.vector(data[,track]==TRUE),] %>% 
+  group_by(Track=as.character(track),fuel_size) %>% 
+  summarise(
+    total=sum(n),
+    SEM=ifelse(track=="SEM",sum(0,n[types==1])/total,sum(n*SEM)/total),
+    Custom=ifelse(track=="Custom",sum(0,n[types==1])/total,sum(n*Custom)/total),
+    DI=ifelse(track=="DI",sum(0,n[types==1])/total,sum(n*DI)/total),
+    Standard=ifelse(track=="Standard",sum(0,n[types==1])/total,sum(n*Standard)/total),
+    Lighting=ifelse(track=="Lighting",sum(0,n[types==1])/total,sum(n*Lighting)/total),
+    Total=sum(n)
+    ) %>% 
+  select(-total) %>% 
+  melt(id.vars=c("Track","fuel_size")) %>% 
+      mutate(value=ifelse(variable=="Total",round(value,0),paste(round(value*100,0),"%",sep="")))
+    
+  return(comb_out)
+  }
+}
+
+pie_plot<-function(data=pie_dat){
+  ggplot(data %>% filter(fuel_size!="Unknown"))+
+  geom_bar(aes(x="",y=value,fill=variable),stat = "identity",position = "fill",width = 1,color="black",size=0)+
+  # geom_text(aes(x="",y=value,label=round(value*100,0)))+
+  coord_polar("y")+
+  theme(
+    text=element_text(size=14),
+    legend.text = element_text(size=7),
+    legend.title = element_text(size=8),
+    legend.key.size = unit(.25,"inches"),
+    legend.position = "left",
+    axis.text = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_text(face = "bold",size=11),
+    axis.ticks = element_blank(),
+    strip.text.x = element_blank(),
+    legend.margin=margin(0,0,0,0),
+    legend.box.margin=margin(0,-4,0,0),
+    plot.margin = margin(-10,0,-10,0),
+    axis.line = element_blank(),
+    plot.title = )+
+  labs(fill="Tracks per \nSite",y="Number of Tracks per Site")+
+  scale_fill_manual(
+    values = c("#99CC33","darkorange","#999933","#666699","black"),
+    breaks = c("N1","N2","N3","N4","N5"),
+    labels = c("One","Two","Three","Four","Five"))+
+  facet_grid(.~fuel_size)
+}
+
+comb_plot<-function(){
+  ggplot(CombFull %>% filter(fuel_size!="Unknown") %>% 
+    mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))))+
+  geom_tile(aes(x=variable,fill=value*100,y=1))+
+  geom_text(data=TextFull %>% filter(fuel_size!="Unknown") %>%
+      mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))),
+    aes(x=variable,y=1,label=value),size=3)+
+  theme(text=element_text(size=10),
+    axis.text.x = element_text(angle = 0, hjust = .5,size=6),
+    axis.text.y = element_blank(),axis.ticks.y = element_blank(),
+    axis.line.y = element_blank(),
+    strip.text.y = element_text(angle = 180),
+    strip.text.x = element_text(size = 12))+
+  scale_fill_gradient2(high = "red",low="green",mid = "yellow",midpoint = 50,na.value = "gray90",guide = FALSE)+
+  scale_x_discrete(position = "top")+
+  coord_fixed(ratio = 1)+
+  labs(y=NULL,x=NULL,fill="% (by row)",title="Combinations of Tracks at Sites")+
+  facet_grid(t_f~fuel_size,switch = "both")
+}
+
+freq_plot<-function(){
+  ggplot(left_join(for_heat,size_count,by=c("fuel_size"="Var1")))+
+  # geom_tile(aes(x=variable,y=fuel_size,fill=value*100),color="black")+
+  geom_tile(aes(x=fuel_size,
+    y=factor(variable,levels = rev(c("SEM","Custom","DI","Standard","Lighting","Total"))),
+    fill=value*100),color="black")+
+  scale_fill_gradient2(high = "#000000",low="#00ff00",mid="#008700",midpoint = 50,limit=c(0,100))+
+  # geom_text(aes(x=variable,y=fuel_size,label=round(value*Freq,0)),size=2)+
+  geom_text(aes(x=fuel_size,
+    y=factor(variable,levels = rev(c("SEM","Custom","DI","Standard","Lighting","Total"))),
+    label=round(value*Freq,0)),size=2)+
+   labs(title="Project Type as a \nPercentage of Total Projects",y="Project Track",
+    x="Site Size",fill="Percentage \n(of size group)")+
+  theme(axis.text.x = element_text(angle = 0, hjust = .5,size = 5),
+    text = element_text(size=6),
+    axis.text.y=element_text(size=5),
+    plot.title = element_text(size=6),
+    plot.margin=grid::unit(c(0,0,0,0), "mm"))+
+  coord_fixed(ratio=1)
+}
+```
+#Title - ETO Subsector Summaries
+
+##Some Summary Information Could Go Here
+
+This might be some overall summary, or general trends, or explaination of how to read charts. 
+
+##### page break
+
+##Summary would probably have another page
+
+This might be some additional summary, or general trends, or explaination of how to read charts. 
+
+##### page break
+
+```{r prep_plot_office,include=FALSE}
+
+for_heat<-heat_data(sector = "Office")
+
+size_count<-as.data.frame(table(Proj_Pop$fuel_size[Proj_Pop$naicsgroup=="Office"&Proj_Pop$participation=="Participant"]))
+
+combos<-combo_data(sector = "Office")
+
+CombSEM<-comb_funct(track = "SEM")
+CombCust<-comb_funct(track = "Custom")
+CombDI<-comb_funct(track = "DI")
+CombStan<-comb_funct(track = "Standard")
+CombLite<-comb_funct(track = "Lighting")
+
+CombFull<-bind_rows(CombSEM,CombCust,CombDI,CombStan,CombLite)
+
+TextSEM<-comb_funct(track = "SEM",metric = "count")
+TextCust<-comb_funct(track = "Custom",metric = "count")
+TextDI<-comb_funct(track = "DI",metric = "count")
+TextStan<-comb_funct(track = "Standard",metric = "count")
+TextLite<-comb_funct(track = "Lighting",metric = "count")
+
+TextFull<-bind_rows(TextSEM,TextCust,TextDI,TextStan,TextLite)
+
+pie_dat<-combos %>% 
+  group_by(fuel_size) %>% 
+  summarise(N1=sum(n[types==1])/sum(n),N2=sum(n[types==2])/sum(n),N3=sum(n[types==3])/sum(n),N4=sum(n[types==4])/sum(n),N5=sum(n[types==5])/sum(n)) %>% 
+  melt(id.vars="fuel_size")
+
+```
+
+##Characterization of the Office Market
+
+### Sector Overview
+
+```{r off_tab,include=TRUE}
+kable(table_data(sector="Office"),digits = 0)
+```
+
+```{r off_tab_plot,include=TRUE,fig.height=2,dpi=1000}
+table_data(sector = "Office",for_plot = TRUE)
+
+```
+
+
+
+
+###Regional Variation in Savings Relative to Usage
+
+Shows difference of regional subsector participant savings to regional subsector participant usage. Positive (red) values indicate disproportionately high savings, Negative (blue) values show disproportionately low savings.
+
+```{r map_off,include=TRUE,fig.height=3,dpi=1000}
+map_plot(sector = "Office")
+```
+
+
+###Plot of Track Frequency by Size
+
+```{r track_freq_off,include=TRUE,fig.height=2,dpi=1000}
+freq_plot()
+```
+
+###Plot of Track Combinations
+
+```{r track_comb_off,include=TRUE,fig.width=7.5,dpi=2000,fig.height=3.25}
+comb_plot()
+
+```
+
+```{r comb_count_off, include=TRUE,fig.width=6,dpi=2000,fig.height=2}
+pie_plot(pie_dat)
+```
+
+
+```{r prep_plot_rest,include=FALSE}
+
+for_heat<-heat_data(sector = "Restaurant")
+
+size_count<-as.data.frame(table(Proj_Pop$fuel_size[Proj_Pop$naicsgroup=="Restaurant"&Proj_Pop$participation=="Participant"]))
+
+combos<-combo_data(sector = "Restaurant")
+
+CombSEM<-comb_funct(track = "SEM")
+CombCust<-comb_funct(track = "Custom")
+CombDI<-comb_funct(track = "DI")
+CombStan<-comb_funct(track = "Standard")
+CombLite<-comb_funct(track = "Lighting")
+
+CombFull<-bind_rows(CombSEM,CombCust,CombDI,CombStan,CombLite)
+
+TextSEM<-comb_funct(track = "SEM",metric = "count")
+TextCust<-comb_funct(track = "Custom",metric = "count")
+TextDI<-comb_funct(track = "DI",metric = "count")
+TextStan<-comb_funct(track = "Standard",metric = "count")
+TextLite<-comb_funct(track = "Lighting",metric = "count")
+
+TextFull<-bind_rows(TextSEM,TextCust,TextDI,TextStan,TextLite)
+
+pie_dat<-combos %>% 
+  group_by(fuel_size) %>% 
+  summarise(N1=sum(n[types==1])/sum(n),N2=sum(n[types==2])/sum(n),N3=sum(n[types==3])/sum(n),N4=sum(n[types==4])/sum(n),N5=sum(n[types==5])/sum(n)) %>% 
+  melt(id.vars="fuel_size")
+```
+##### page break
+
+##Characterization of the Restaurant Market
+
+###Sector Overview
+
+```{r rest_tab,include=TRUE}
+kable(table_data(sector="Restaurant"),digits = 0)
+```
+
+
+```{r rest_tab_plot,include=TRUE, fig.height=2,dpi=1000}
+table_data(sector="Restaurant",for_plot = TRUE)
+
+```
+
+###Regional Variation in Savings Relative to Usage
+
+Shows difference of regional subsector participant savings to regional subsector participant usage. Positive (red) values indicate disproportionately high savings, Negative (blue) values show disproportionately low savings.
+
+```{r map_rest,include=TRUE,fig.height=3,dpi=1000}
+map_plot(sector = "Restaurant")
+```
+
+###Plot of Track Frequency by Size
+
+```{r track_freq_rest,include=TRUE,fig.height=2,dpi=1000}
+freq_plot()
+```
+
+###Plot of Track Combinations
+
+```{r track_comb_rest,include=TRUE,fig.width=7.5,dpi=2000,fig.height=3.25}
+comb_plot()
+```
+
+```{r comb_count_rest, include=TRUE,fig.width=6,dpi=2000,fig.height=2}
+pie_plot(pie_dat)
+
+```
