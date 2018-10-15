@@ -1,0 +1,342 @@
+---
+title: "ETO EB Sector Summaries"
+output:
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+```
+
+```{r data, include=FALSE,warning=FALSE}
+library(xlsx)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(reshape2)
+library(cowplot)
+library(knitr)
+library(maps)
+
+Proj_Pop<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Project_info_for_Summaries.csv",stringsAsFactors = FALSE)
+State_adj<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/State_info_for_Summaries.csv",stringsAsFactors = FALSE)
+regions<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/ETO Regions.csv",stringsAsFactors = FALSE)
+
+bound<-function(x,l,h){
+  data<-x
+  data[x<l]<-l
+  data[x>h]<-h
+  return(data)
+  }
+
+subset_plot<-function(data,size_group,track_group){
+  ggplot(subset(data,data[,track_group]&fuel_size==size_group) %>%
+    mutate(SEM=SEM*n/types,Custom=Custom*n/types,DI=DI*n/types,Standard=Standard*n/types,Lighting=Lighting*n/types) %>% 
+    select(-n,-types) %>% 
+    melt(id.vars = c("fuel_size","combo")))+
+  geom_bar(aes(x=combo,y=value,fill=variable),stat = "identity",position="stack")+
+  labs(x=NULL,y=NULL,fill=NULL,title=paste(size_group,track_group,sep = " "))+
+  guides(fill=FALSE)+
+  theme(axis.text.x=element_blank(),
+    plot.title = element_text(size = 7),
+    axis.text.y = element_text(size=6))
+}
+
+heat_data<-function(data=Proj_Pop,sector){
+  data %>%
+  filter(naicsgroup==sector) %>% 
+  filter(participation=="Participant") %>% 
+  group_by(fuel_size) %>% 
+  summarise(
+    SEM=mean(ifelse(SEM=="X",0,1)),
+    Custom=mean(ifelse(Custom=="X",0,1)),
+    DI=mean(ifelse(DI=="X",0,1)),
+    Standard=mean(ifelse(Standard=="X",0,1)),
+    Lighting=mean(ifelse(Lighting=="X",0,1))
+    ) %>% 
+  ungroup() %>% 
+  melt(id.vars="fuel_size")
+}
+
+combo_data<-function(data=Proj_Pop,sector){
+  data %>% 
+  filter(naicsgroup==sector) %>% 
+  filter(participation=="Participant") %>% 
+  filter(combo!="") %>% 
+  group_by(fuel_size,combo) %>% 
+  summarise(n=n()) %>% 
+  mutate(types=ifelse(combo=="",0,nchar(gsub("[^\r\n\t\f\v ]","",combo))+1),
+    SEM=grepl("SEM",combo),
+    Custom=grepl("Custom",combo),
+    DI=grepl("DI",combo),
+    Standard=grepl("Standard",combo),
+    Lighting=grepl("Lighting",combo))
+}
+
+table_data<-function(data=Proj_Pop,sector){
+  pop_dat<-data %>%
+    filter(naicsgroup==sector) %>% 
+    left_join(State_adj %>% filter(naicsgroup==sector),by="naicsgroup") %>% 
+    summarise(Sites=unique(Units),
+      GWh=(sum(kwh2017[participation=="Participant"],na.rm = TRUE)+sum(kwh2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6,
+      M_Therms=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6)
+    
+  part_dat<-data %>% 
+    filter(naicsgroup==sector) %>% 
+    filter(participation=="Participant") %>% 
+    summarise(Sites=n_distinct(et_siteid),GWh=sum(kwh2017,na.rm = TRUE)/1e6,M_Therms=sum(therms2017,na.rm = TRUE)/1e6)
+  
+  save_dat<-data %>%
+    filter(naicsgroup==sector) %>% 
+    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,M_Therms=sum(Therms_savings)/1e6)
+  
+  full_dat<-bind_rows(pop_dat,part_dat,save_dat)
+  row.names(full_dat)<-c("Total (est)","Participant","Savings")
+  
+  return(full_dat)
+}
+
+map_plot<-function(data=Proj_Pop,sector){
+  map_dat<-data %>% 
+    filter(!grepl("multifamily",naicsgroup,ignore.case = TRUE)&naicsgroup!="Industrial") %>% 
+    filter(participation=="Participant") %>% 
+    group_by(Region) %>% 
+    summarise(
+      p_save=round(sum(kWh_savings[naicsgroup==sector])/sum(kWh_savings),3)*100,
+      p_use=round(sum(as.numeric(kwh2017[naicsgroup==sector]),na.rm = TRUE)/sum(as.numeric(kwh2017),na.rm = TRUE),3)*100,
+      save_ratio=ifelse(p_save<=.5&p_use<=.5,0,bound(log10(p_save/p_use),-2,2)),save_diff=bound(p_save-p_use,-10,10)
+      )
+  
+  map<-map_data('county') %>% subset(region == 'oregon') %>% left_join(regions %>% mutate(merge=tolower(County)),by=c("subregion"="merge"))
+  
+  map_out<-left_join(map,map_dat,by=c("Regions.for.EB.Process"="Region"))
+  
+  output<-ggplot(map_out)+
+    coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
+    geom_polygon(data = map_out, aes(x = long, y = lat, group = group,fill = save_diff), color = "black", size = .3)+
+    # scale_fill_gradient2(mid="white",high="red",low="blue",midpoint = 0,limits=c(-3,3))+
+    scale_fill_gradientn(colors = rev(c("#ff0000","#ff6666","white","#9ebbff","#004CFF")),limits=c(-10,10))+
+    labs(fill="Savings % - \nUsage %",title="Regional Variation:\n Difference of Subsector Participant Savings and \nSubsector Participant Usage")+
+    theme(axis.title = element_blank(),axis.text = element_blank(),axis.ticks = element_blank(),axis.line = element_blank(),
+    text = element_text(size=8),
+    plot.title = element_text(size=8))
+
+  return(output)
+}
+
+```
+
+```{r prep_plot_office,include=FALSE}
+
+for_heat<-heat_data(sector = "Office")
+
+size_count<-as.data.frame(table(Proj_Pop$fuel_size[Proj_Pop$naicsgroup=="Office"&Proj_Pop$participation=="Participant"]))
+
+combos<-combo_data(sector = "Office")
+
+# ggplot(combos)+
+#   geom_bar(aes(x=types,y=n,fill=combo),position = "fill",stat = "identity")+
+#   facet_grid(fuel_size~.)
+# 
+# ggplot(combos)+
+#   geom_bar(aes(x=fuel_size,y=n,fill=combo),position = "fill",stat = "identity")
+# 
+# ggplot(combos)+
+#   geom_bar(aes(x=combo,y=n),stat="identity")+
+#   facet_grid(fuel_size~.,scales = "free_y")+
+#   theme(axis.text.x = element_text(angle = 90, hjust = .5))
+
+combos2<-combos
+combos2$SEM<-combos2$SEM*combos2$n/combos2$types
+combos2$Custom<-combos2$Custom*combos2$n/combos2$types
+combos2$DI<-combos2$DI*combos2$n/combos2$types
+combos2$Standard<-combos2$Standard*combos2$n/combos2$types
+combos2$Lighting<-combos2$Lighting*combos2$n/combos2$types
+
+combos3<-melt(combos2 %>% select(-n,-types),id.vars = c("fuel_size","combo") )
+
+LSEM<-subset_plot(combos,size_group = "Large",track_group = "SEM")
+MSEM<-subset_plot(combos,size_group = "Medium",track_group = "SEM")
+SSEM<-subset_plot(combos,size_group = "Small",track_group = "SEM")
+LCUST<-subset_plot(combos,size_group = "Large",track_group = "Custom")
+MCUST<-subset_plot(combos,size_group = "Medium",track_group = "Custom")
+SCUST<-subset_plot(combos,size_group = "Small",track_group = "Custom")
+LDI<-subset_plot(combos,size_group = "Large",track_group = "DI")
+MDI<-subset_plot(combos,size_group = "Medium",track_group = "DI")
+SDI<-subset_plot(combos,size_group = "Small",track_group = "DI")
+LSTAN<-subset_plot(combos,size_group = "Large",track_group = "Standard")
+MSTAN<-subset_plot(combos,size_group = "Medium",track_group = "Standard")
+SSTAN<-subset_plot(combos,size_group = "Small",track_group = "Standard")
+LLITE<-subset_plot(combos,size_group = "Large",track_group = "Lighting")
+MLITE<-subset_plot(combos,size_group = "Medium",track_group = "Lighting")
+SLITE<-subset_plot(combos,size_group = "Small",track_group = "Lighting")
+USEM<-subset_plot(combos,size_group = "Unknown",track_group = "SEM")
+UCUST<-subset_plot(combos,size_group = "Unknown",track_group = "Custom")
+UDI<-subset_plot(combos,size_group = "Unknown",track_group = "DI")
+USTAN<-subset_plot(combos,size_group = "Unknown",track_group = "Standard")
+ULITE<-subset_plot(combos,size_group = "Unknown",track_group = "Lighting")
+LEGEND<-ggplot(combos %>%
+    mutate(SEM=SEM*n/types,Custom=Custom*n/types,DI=DI*n/types,Standard=Standard*n/types,Lighting=Lighting*n/types) %>% 
+    select(-n,-types) %>% 
+    melt(id.vars = c("fuel_size","combo")))+
+  geom_bar(aes(x=combo,y=value,fill=variable),stat = "identity",position="stack")+
+  labs(fill="Track")+
+  theme(legend.text = element_text(size = 6),legend.title = element_text(size=8))
+
+```
+
+#Results for Offices
+
+## Basic Table
+```{r off_tab,include=TRUE}
+kable(table_data(sector="Office"))
+```
+
+##Plot of Regional Variation in Savings
+Shows difference of regional subsector participant savings to regional subsector participant usage. Positive (red) values indicate disproportionately high savings, Negative (blue) values show disproportionately low savings.
+
+```{r map_off,include=TRUE,fig.height=3,dpi=1000}
+map_plot(sector = "Office")
+```
+
+
+##Plot of Track Frequency by Size
+```{r track_freq_off,include=TRUE,fig.height=3,dpi=1000}
+ggplot(left_join(for_heat,size_count,by=c("fuel_size"="Var1")))+
+  geom_tile(aes(x=variable,y=fuel_size,fill=value*100),color="black")+
+  scale_fill_gradient2(high = "#000000",low="#00ff00",mid="#008700",midpoint = 50,limit=c(0,100))+
+  geom_text(aes(x=variable,y=fuel_size,label=round(value*Freq,0)))+
+   labs(title="Project Type as a \nPercentage of Total Projects",x="Project Track",
+    y="Site Size",fill="Percentage \n(of size group)")+
+  theme(axis.text.x = element_text(angle = 90, hjust = .5,size = 8),
+    text = element_text(size=8),
+    axis.text.y=element_text(size=8),
+    plot.title = element_text(size=8))+
+  coord_fixed(ratio=1)
+
+```
+
+##Plot of Track Combinations
+
+```{r track_comb_off,include=TRUE,fig.height=5,dpi=1000}
+plot_grid(
+  plot_grid(
+    LSEM,LCUST,LDI,LSTAN,LLITE,MSEM,MCUST,MDI,MSTAN,MLITE,SSEM,SCUST,SDI,SSTAN,SLITE,USEM,UCUST,UDI,USTAN,ULITE,
+    ncol=5,nrow=4,label_size = 8
+    # labels=c("Large SEM","Large Custom","Large DI","Large Standard","Large Lighting",
+    #   "Medium SEM","Medium Custom","Medium DI","Medium Standard","Medium Lighting",
+    #   "Small SEM","Small Custom","Small DI","Small Standard","Small Lighting",
+    #   "Unknown SEM","Unknown Custom","Unknown DI","Unknown Standard","Unknown Lighting")
+    ),
+  plot_grid(get_legend(LEGEND),ncol=1),rel_widths = c(1,.15))
+
+
+```
+
+```{r prep_plot_rest,include=FALSE}
+
+for_heat<-heat_data(sector = "Restaurant")
+
+size_count<-as.data.frame(table(Proj_Pop$fuel_size[Proj_Pop$naicsgroup=="Restaurant"&Proj_Pop$participation=="Participant"]))
+
+combos<-combo_data(sector = "Restaurant")
+
+# ggplot(combos)+
+#   geom_bar(aes(x=types,y=n,fill=combo),position = "fill",stat = "identity")+
+#   facet_grid(fuel_size~.)
+# 
+# ggplot(combos)+
+#   geom_bar(aes(x=fuel_size,y=n,fill=combo),position = "fill",stat = "identity")
+# 
+# ggplot(combos)+
+#   geom_bar(aes(x=combo,y=n),stat="identity")+
+#   facet_grid(fuel_size~.,scales = "free_y")+
+#   theme(axis.text.x = element_text(angle = 90, hjust = .5))
+
+combos2<-combos
+combos2$SEM<-combos2$SEM*combos2$n/combos2$types
+combos2$Custom<-combos2$Custom*combos2$n/combos2$types
+combos2$DI<-combos2$DI*combos2$n/combos2$types
+combos2$Standard<-combos2$Standard*combos2$n/combos2$types
+combos2$Lighting<-combos2$Lighting*combos2$n/combos2$types
+
+combos3<-melt(combos2 %>% select(-n,-types),id.vars = c("fuel_size","combo") )
+
+LSEM<-subset_plot(combos,size_group = "Large",track_group = "SEM")
+MSEM<-subset_plot(combos,size_group = "Medium",track_group = "SEM")
+SSEM<-subset_plot(combos,size_group = "Small",track_group = "SEM")
+LCUST<-subset_plot(combos,size_group = "Large",track_group = "Custom")
+MCUST<-subset_plot(combos,size_group = "Medium",track_group = "Custom")
+SCUST<-subset_plot(combos,size_group = "Small",track_group = "Custom")
+LDI<-subset_plot(combos,size_group = "Large",track_group = "DI")
+MDI<-subset_plot(combos,size_group = "Medium",track_group = "DI")
+SDI<-subset_plot(combos,size_group = "Small",track_group = "DI")
+LSTAN<-subset_plot(combos,size_group = "Large",track_group = "Standard")
+MSTAN<-subset_plot(combos,size_group = "Medium",track_group = "Standard")
+SSTAN<-subset_plot(combos,size_group = "Small",track_group = "Standard")
+LLITE<-subset_plot(combos,size_group = "Large",track_group = "Lighting")
+MLITE<-subset_plot(combos,size_group = "Medium",track_group = "Lighting")
+SLITE<-subset_plot(combos,size_group = "Small",track_group = "Lighting")
+USEM<-subset_plot(combos,size_group = "Unknown",track_group = "SEM")
+UCUST<-subset_plot(combos,size_group = "Unknown",track_group = "Custom")
+UDI<-subset_plot(combos,size_group = "Unknown",track_group = "DI")
+USTAN<-subset_plot(combos,size_group = "Unknown",track_group = "Standard")
+ULITE<-subset_plot(combos,size_group = "Unknown",track_group = "Lighting")
+LEGEND<-ggplot(combos %>%
+    mutate(SEM=SEM*n/types,Custom=Custom*n/types,DI=DI*n/types,Standard=Standard*n/types,Lighting=Lighting*n/types) %>% 
+    select(-n,-types) %>% 
+    melt(id.vars = c("fuel_size","combo")))+
+  geom_bar(aes(x=combo,y=value,fill=variable),stat = "identity",position="stack")+
+  labs(fill="Track")+
+  theme(legend.text = element_text(size = 6),legend.title = element_text(size=8))
+
+```
+
+#Results for Restaurants
+
+## Basic Table
+```{r rest_tab,include=TRUE}
+kable(table_data(sector="Restaurant"))
+```
+
+##Plot of Regional Variation in Savings
+Shows log of the ratio of regional subsector participant savings to regional subsector participant usage. Positive (red) values indicate disproportionately high savings, Negative (blue) values show disproportionately low savings.
+
+```{r map_rest,include=TRUE,fig.height=3,dpi=1000}
+map_plot(sector = "Restaurant")
+```
+
+##Plot of Track Frequency by Size
+```{r track_freq_rest,include=TRUE,fig.height=3,dpi=1000}
+ggplot(left_join(for_heat,size_count,by=c("fuel_size"="Var1")))+
+  geom_tile(aes(x=variable,y=fuel_size,fill=value*100),color="black")+
+  scale_fill_gradient2(high = "#000000",low="#00ff00",mid="#008700",midpoint = 50,limit=c(0,100))+
+  geom_text(aes(x=variable,y=fuel_size,label=round(value*Freq,0)))+
+   labs(title="Project Type as a \nPercentage of Total Projects",x="Project Track",
+    y="Site Size",fill="Percentage \n(of size group)")+
+  theme(axis.text.x = element_text(angle = 90, hjust = .5,size = 8),
+    text = element_text(size=8),
+    axis.text.y=element_text(size=8),
+    plot.title = element_text(size=8))+
+  coord_fixed(ratio=1)
+
+```
+
+##Plot of Track Combinations
+
+```{r track_comb_rest,include=TRUE,fig.height=5,dpi=1000}
+
+
+# plot_grid(
+#   plot_grid(
+#     LSEM,LCUST,LDI,LSTAN,LLITE,MSEM,MCUST,MDI,MSTAN,MLITE,SSEM,SCUST,SDI,SSTAN,SLITE,USEM,UCUST,UDI,USTAN,ULITE,
+#     ncol=5,nrow=4,label_size = 8
+#     # labels=c("Large SEM","Large Custom","Large DI","Large Standard","Large Lighting",
+#     #   "Medium SEM","Medium Custom","Medium DI","Medium Standard","Medium Lighting",
+#     #   "Small SEM","Small Custom","Small DI","Small Standard","Small Lighting",
+#     #   "Unknown SEM","Unknown Custom","Unknown DI","Unknown Standard","Unknown Lighting")
+#     ),
+#   plot_grid(get_legend(LEGEND),ncol=1),rel_widths = c(1,.15))
+
+
+```
