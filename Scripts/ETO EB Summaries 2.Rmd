@@ -29,13 +29,6 @@ bound<-function(x,l,h){
   return(data)
 }
 
-chunk_page_break <- function(){
-
-  str <- "<w:r><w:br w:type=\"page\"/></w:r>"
-  class(str) <- "ooxml_chunk"
-  str
-}
-
 subset_plot<-function(data,size_group,track_group){
   ggplot(subset(data,data[,track_group]&fuel_size==size_group) %>%
     mutate(SEM=SEM*n/types,Custom=Custom*n/types,DI=DI*n/types,Standard=Standard*n/types,Lighting=Lighting*n/types) %>% 
@@ -266,6 +259,20 @@ freq_plot<-function(){
 ##Some Summary Information Could Go Here
 
 This might be some overall summary, or general trends, or explaination of how to read charts. 
+
+### Cover Table
+```{r cover_table}
+CT<-Proj_Pop %>% group_by(Sector=naicsgroup) %>% summarise(Parts=n(),kWh=sum(kwh2017,na.rm = TRUE),Therms=sum(therms2017,na.rm = TRUE),
+  kWh_Heat=round(sum(kWh_savings,na.rm = TRUE)/sum(Proj_Pop$kWh_savings,na.rm = TRUE)-sum(kwh2017,na.rm = TRUE)/sum(as.numeric(Proj_Pop$kwh2017),na.rm = TRUE),3)*100,
+  Therms_Heat=round(sum(Therms_savings,na.rm = TRUE)/sum(Proj_Pop$Therms_savings,na.rm = TRUE)-sum(therms2017,na.rm = TRUE)/sum(Proj_Pop$therms2017,na.rm = TRUE),3)*100)
+
+
+```
+
+
+### Region Chart
+
+### Combination Chart Key
 
 ##### page break
 
