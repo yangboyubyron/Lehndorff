@@ -13,6 +13,9 @@ test_site<-read.csv("/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egau
 test_site$timestamp<-as.POSIXct(test_site$Date...Time)
 
 # Calculate Differences
+test_site$abs_diff_volts<-test_site$Mains_L1_volts..V.-test_site$Mains_L2_volts..V.
+test_site$p_diff_volts<-test_site$abs_diff_volts/test_site$Mains_L1_volts..V.*100
+
 test_site$abs_diff_Mains<-(test_site$Mains_kW..kW.-test_site$Mains_kW_ALT..kW.)*1000
 test_site$p_diff_Mains<-test_site$abs_diff_Mains/test_site$Mains_kW..kW.
 test_site$p_diff_Mains[abs(test_site$Mains_kW..kW.)<.001]<-NA
@@ -29,7 +32,7 @@ test_site$abs_diff_Well_Pump<-(test_site$Well_Pump..kW.-test_site$Well_Pump_ALT.
 test_site$p_diff_Well_Pump<-test_site$abs_diff_Well_Pump/test_site$Well_Pump..kW./1000*100
 test_site$p_diff_Well_Pump[abs(test_site$Well_Pump..kW.)<.001]<-NA
 
-# Summary Table
+# Show equality
 Summary<-test_site %>% 
   select(timestamp,
     `Mains diff W`=abs_diff_Mains,`Mains diff %`=p_diff_Mains,
@@ -50,16 +53,45 @@ melted_data<-test_site %>%
   melt(id.vars="timestamp")
 
 ggplot(melted_data %>% filter(grepl("abs_diff",variable)))+
-  geom_boxplot(aes(x=variable,y=value))+
-  labs(y="Watts",x="EU",title="Distribution of Wattage Difference")
+  geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
+  labs(y="Watts",x="EU",title="Distribution of Wattage Difference")+
+  scale_y_continuous(limits = c(-1,1))
 
 ggplot(melted_data %>% filter(grepl("p_diff",variable)))+
-  geom_boxplot(aes(x=variable,y=value))+
-  labs(y="% Difference",x="EU",title="Distribution of % Wattage Difference")
+  geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
+  labs(y="% Difference",x="EU",title="Distribution of % Wattage Difference")+
+  scale_y_continuous(limits = c(-3,3))
 
-ggplot(melted_data %>% filter(variable=="p_diff_Mains") %>% mutate(hour=hour(timestamp)))+
-  geom_histogram(aes(x=value),binwidth = .05)+
-  facet_wrap(~hour)
+# Investigate patterns
+## bivairiate continuous
+
+ggplot(test_site,aes(x=Mains_kW..kW.,y=p_diff_Mains))+
+  geom_point(size=.01)+
+  geom_density2d()+
+  geom_rug()
+
+zzz<-as.data.frame(
+  round(cor(select(test_site,Mains_kW..kW.,Well_Pump..kW.,Furnace..kW.,Water_Heater..kW.,
+    abs_diff_Mains,p_diff_Mains,
+    abs_diff_Furnace,p_diff_Furnace,
+    abs_diff_Water_Heater,p_diff_Water_Heater,
+    abs_diff_Well_Pump,p_diff_Well_Pump),use = "pairwise.complete.obs"),3))
+
+zzz$type<-row.names(zzz)
+
+cor_data<-melt(zzz,id.vars = "type")
+
+ggplot(cor_data)+
+  geom_tile(aes(y=factor(variable),x=factor(type,levels = levels(factor(variable))),fill=value))+
+  scale_fill_gradient2(low="red",high="green",mid="yellow",midpoint = 0,limits=c(-1,1))+
+  theme(axis.text.x = element_text(angle = 90))+
+  coord_fixed(ratio = 1)
+
+## v time
+ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Mains))+
+  geom_boxplot()+
+  scale_y_continuous(limits = c(-3,1))
+  # scale_y_continuous(limits = c(0,3))
 
 
 # Independent comparison
