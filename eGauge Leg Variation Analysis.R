@@ -4,6 +4,7 @@ library(lubridate)
 library(reshape2)
 library(ggplot2)
 library(tdr)
+library(xlsx)
 
 # Functions
 
@@ -72,9 +73,19 @@ ggplot(melted_data %>% filter(grepl("p_diff",variable)))+
 # Investigate patterns
 ## bivairiate continuous
 
-ggplot(test_site,aes(x=p_diff_Mains,y=p_diff_Water_Heater))+
+ggplot(test_site,aes(x=Furnace..kW.,y=abs_diff_Furnace))+
   geom_rug()+
-  geom_bin2d(binwidth=c(.2,.06))
+  geom_bin2d(binwidth=c(.0025,.04))+
+  labs(x="Furnace kW",y="Watt difference",title="Watt diff by Usage")
+
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Difference_by_Usage_Furnace.jpg",device = "jpeg")
+
+ggplot(test_site,aes(x=Mains_kW..kW.,y=abs_diff_Mains))+
+  geom_rug()+
+  geom_bin2d(binwidth=c(.03,.3))+
+  labs(x="Mains kW",y="Watt difference",title="Watt diff by Usage")
+
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Difference_by_Usage_Mains.jpg",device = "jpeg")
 
 # zzz<-as.data.frame(
 #   round(cor(select(test_site,Mains_kW..kW.,Well_Pump..kW.,Furnace..kW.,Water_Heater..kW.,
@@ -108,6 +119,14 @@ ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Mains))+
 
 # ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_Mains_by_Hour.jpg",device = "jpeg")
 
+ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Furnace))+
+  geom_boxplot()+
+  labs(x="Hour of Day",y="% Difference",title="Furnace % Diff by Hour")+
+  scale_y_continuous(limits = c(-3,1))
+  # scale_y_continuous(limits = c(0,3))
+
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_Furnace_by_Hour.jpg",device = "jpeg")
+
 # Surprising Patterns
 ggplot(test_site,aes(x=abs_diff_Mains,y=abs_diff_Water_Heater))+
   geom_rug()+
@@ -134,8 +153,6 @@ ggplot(test_site,aes(x=Mains_kW..kW.,y=Water_Heater..kW.))+
 # ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Surprising_Pattern_3.jpg",device = "jpeg")
 
 # Error Comparison
-ALL<-test_site %>% filter() %>% summarise()
-
 error_calc<-function(data,subset){
   data %>% summarise(
     Subset=subset,
@@ -170,4 +187,5 @@ After_6pm<-test_site %>% filter(hour(timestamp)>=18) %>% error_calc(.,subset = "
 
 Error_Summary<-bind_rows(All,On_Main,On_Furnace,On_WH,On_WP,High_Main,High_Furnace,High_WH,High_WP,Peak,Non_Peak,After_6pm)
 
+# write.xlsx(Error_Summary,file = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Error_Summary.xlsx",sheetName = "Errors by Period",row.names = FALSE)
 
