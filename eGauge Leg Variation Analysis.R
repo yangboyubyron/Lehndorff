@@ -65,10 +65,11 @@ ggplot(melted_data %>% filter(grepl("p_diff",variable)))+
 # Investigate patterns
 ## bivairiate continuous
 
-ggplot(test_site,aes(x=Mains_kW..kW.,y=p_diff_Mains))+
+ggplot(test_site,aes(x=p_diff_Mains,y=p_diff_Water_Heater))+
   geom_point(size=.01)+
-  geom_density2d()+
+  # geom_density2d()+
   geom_rug()
+  geom_bin2d(binwidth=c(.2,.06))
 
 zzz<-as.data.frame(
   round(cor(select(test_site,Mains_kW..kW.,Well_Pump..kW.,Furnace..kW.,Water_Heater..kW.,
@@ -88,6 +89,9 @@ ggplot(cor_data)+
   coord_fixed(ratio = 1)
 
 ## v time
+ggplot(test_site,aes(x=timestamp,y=p_diff_Mains))+
+  geom_point(size=.01)
+
 ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Mains))+
   geom_boxplot()+
   scale_y_continuous(limits = c(-3,1))
