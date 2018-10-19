@@ -19,18 +19,22 @@ test_site$abs_diff_volts<-test_site$Mains_L1_volts..V.-test_site$Mains_L2_volts.
 test_site$p_diff_volts<-test_site$abs_diff_volts/test_site$Mains_L1_volts..V.*100
 
 test_site$abs_diff_Mains<-(test_site$Mains_kW..kW.-test_site$Mains_kW_ALT..kW.)*1000
+# test_site$abs_diff_Mains[test_site$Mains_kW..kW.<.05]<-NA
 test_site$p_diff_Mains<-test_site$abs_diff_Mains/test_site$Mains_kW..kW.
 test_site$p_diff_Mains[abs(test_site$Mains_kW..kW.)<.001]<-NA
 
 test_site$abs_diff_Furnace<-(test_site$Furnace..kW.-test_site$Furnace_ALT..kW.)*1000
+# test_site$abs_diff_Furnace[test_site$Furnace..kW.<.05]<-NA
 test_site$p_diff_Furnace<-test_site$abs_diff_Furnace/test_site$Furnace..kW./1000*100
 test_site$p_diff_Furnace[abs(test_site$Furnace..kW.)<.001]<-NA
 
 test_site$abs_diff_Water_Heater<-(test_site$Water_Heater..kW.-test_site$Water_Heater_ALT..kW.)*1000
+# test_site$abs_diff_Water_Heater[test_site$Water_Heater..kW.<.05]<-NA
 test_site$p_diff_Water_Heater<-test_site$abs_diff_Water_Heater/test_site$Water_Heater..kW./1000*100
 test_site$p_diff_Water_Heater[abs(test_site$Water_Heater..kW.)<.001]<-NA
 
 test_site$abs_diff_Well_Pump<-(test_site$Well_Pump..kW.-test_site$Well_Pump_ALT..kW.)*1000
+# test_site$abs_diff_Well_Pump[test_site$Well_Pump..kW.<.05]<-NA
 test_site$p_diff_Well_Pump<-test_site$abs_diff_Well_Pump/test_site$Well_Pump..kW./1000*100
 test_site$p_diff_Well_Pump[abs(test_site$Well_Pump..kW.)<.001]<-NA
 
@@ -45,7 +49,7 @@ Summary<-test_site %>%
   group_by(variable) %>% 
   summarise(min=min(value,na.rm = TRUE),percentile_5=quantile(value,.05,na.rm = TRUE),median=quantile(value,.5,na.rm = TRUE),mean=mean(value,na.rm=TRUE),percentile_95=quantile(value,.95,na.rm = TRUE),max=max(value,na.rm = TRUE))
 
-# write.csv(Summary,"/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Summary_Table.csv",row.names = FALSE)
+# write.csv(Summary,"/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Summary_Table_50W.csv",row.names = FALSE)
 
 # Plots
 melted_data<-test_site %>% 
@@ -59,14 +63,13 @@ melted_data<-test_site %>%
 ggplot(melted_data %>% filter(grepl("abs_diff",variable)))+
   geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
   labs(y="Watts",x="EU",title="Distribution of Wattage Difference")+
-  scale_y_continuous(limits = c(-1,1))
-
+  coord_cartesian(ylim = c(-2,.5))
 # ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Watt_Difference_by_EU.jpg",device = "jpeg")
 
 ggplot(melted_data %>% filter(grepl("p_diff",variable)))+
   geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
   labs(y="% Difference",x="EU",title="Distribution of % Wattage Difference")+
-  scale_y_continuous(limits = c(-3,3))
+  coord_cartesian(ylim = c(-3,3))
 
 # ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_by_EU.jpg",device = "jpeg")
 
