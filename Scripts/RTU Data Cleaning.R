@@ -293,6 +293,9 @@ table(paste(RTUout4$CZ,RTUout4$Channel,sep=""))
 # write.csv(RTUout3,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE11_1015.csv",row.names = FALSE)
 # write.csv(RTUout4,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE12_1015.csv",row.names = FALSE)
 
+# IGNORE drop_C_pre0714 moving forward
+
+
 # 2018 Data
 
 New2018<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/SMB Customer List 02062018.csv",stringsAsFactors=FALSE)
