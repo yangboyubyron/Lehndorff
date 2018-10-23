@@ -305,6 +305,8 @@ table(RTUout2$validEmail%in%orig_samp_emails)
 table(RTUout3$validEmail%in%orig_samp_emails)
 table(RTUout4$validEmail%in%orig_samp_emails)
 
+n_distinct(RTUpre$validEmail[!RTUpre$validEmail%in%Sampled_Emails&RTUpre$strata=="3C"])
+n_distinct(RTUpre$validEmail[!RTUpre$validEmail%in%Sampled_Emails&RTUpre$strata=="12C"])
 
 # write.csv(RTUout1,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE9_1015.csv",row.names = FALSE)
 # write.csv(RTUout2,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE10_1015.csv",row.names = FALSE)
