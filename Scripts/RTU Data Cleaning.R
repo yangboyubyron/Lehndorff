@@ -256,11 +256,13 @@ Sample8<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assista
 
 RTUdata<-RTUin
 
+Sampled_Emails<-unique(c(RTUin$validEmail[RTUin$Sample!="Not yet sampled"],Sample5$validEmail,Sample6$validEmail,Sample7$validEmail,Sample8$validEmail))
+
 set.seed(78429)
 RTUdata$samplable<-(RTUdata$strata=="3C"|RTUdata$strata=="12C")
 RTUpre<-RTUdata%>%
   filter(
-    !local_government&!drop_A_pre0714&!drop_C_pre0714&Sample=="Not yet sampled"&validEmail!="No valid email"&
+    !local_government&!drop_A_pre0714&Sample=="Not yet sampled"&validEmail!="No valid email"&!validEmail%in%Sampled_Emails&
       !EEID%in%Sample5$EEID&
       !EEID%in%Sample6$EEID&
       !EEID%in%Sample7$EEID&
@@ -269,10 +271,18 @@ RTUpre<-RTUdata%>%
   mutate(rand=runif(length(strata),0,1),rank=rank(rand))
 
 RTUpre$select<-0
-RTUpre$select[RTUpre$samplable&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"]<-1
-RTUpre$select[RTUpre$samplable&RTUpre$rank<=2000&RTUpre$rank>1000&RTUpre$validEmail!="No valid email"]<-2
-RTUpre$select[RTUpre$samplable&RTUpre$rank<=3000&RTUpre$rank>2000&RTUpre$validEmail!="No valid email"]<-3
-RTUpre$select[RTUpre$samplable&RTUpre$rank<=4000&RTUpre$rank>3000&RTUpre$validEmail!="No valid email"]<-4
+
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=1000&RTUpre$validEmail!="No valid email"&!RTUpre$validEmail%in%Sampled_Emails]<-1
+Sampled_Emails<-unique(c(Sampled_Emails,RTUpre$validEmail[RTUpre$select==1]))
+
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=2046&RTUpre$rank>1000&RTUpre$validEmail!="No valid email"&!RTUpre$validEmail%in%Sampled_Emails]<-2
+Sampled_Emails<-unique(c(Sampled_Emails,RTUpre$validEmail[RTUpre$select==2]))
+
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=3143&RTUpre$rank>2046&RTUpre$validEmail!="No valid email"&!RTUpre$validEmail%in%Sampled_Emails]<-3
+Sampled_Emails<-unique(c(Sampled_Emails,RTUpre$validEmail[RTUpre$select==3]))
+
+RTUpre$select[RTUpre$samplable&RTUpre$rank<=4267&RTUpre$rank>3143&RTUpre$validEmail!="No valid email"&!RTUpre$validEmail%in%Sampled_Emails]<-4
+Sampled_Emails<-unique(c(Sampled_Emails,RTUpre$validEmail[RTUpre$select==4]))
 
 table(RTUpre$select,RTUpre$strata)
 table(RTUpre$strata)
@@ -287,6 +297,14 @@ table(paste(RTUout1$CZ,RTUout1$Channel,sep=""))
 table(paste(RTUout2$CZ,RTUout2$Channel,sep=""))
 table(paste(RTUout3$CZ,RTUout3$Channel,sep=""))
 table(paste(RTUout4$CZ,RTUout4$Channel,sep=""))
+
+orig_samp_emails<-unique(c(RTUin$validEmail[RTUin$Sample!="Not yet sampled"],Sample5$validEmail,Sample6$validEmail,Sample7$validEmail,Sample8$validEmail))
+
+table(RTUout1$validEmail%in%orig_samp_emails)
+table(RTUout2$validEmail%in%orig_samp_emails)
+table(RTUout3$validEmail%in%orig_samp_emails)
+table(RTUout4$validEmail%in%orig_samp_emails)
+
 
 # write.csv(RTUout1,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE9_1015.csv",row.names = FALSE)
 # write.csv(RTUout2,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE10_1015.csv",row.names = FALSE)
