@@ -228,6 +228,17 @@ sum(ESEMout$Project_Address%in%PartFrame_dedupe$Project_Address)==0
 # write.xlsx(ESEMout %>% filter(segment=="Recent SEM"),"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Extra_SEM_1010.xlsx",row.names = FALSE,sheetName = "Extra Recent SEM")
 # write.xlsx(ESEMout %>% filter(segment=="Past SEM"),"/volumes/Projects/430011 - ETO Existing Buildings/Data/Sample Frames/Extra_SEM_1010.xlsx",row.names = FALSE,sheetName = "Extra Past SEM",append=TRUE)
 
+# Extra Extra SEM (pull from non-SEM)
+sample_tracking<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Qualtrics Samples/DI, Standard and Lighting/Full sample/ETO Existing Buildings Participant Sample_DI_Standard_Lighting.csv",stringsAsFactors = FALSE)
+
+AllSEM<-unique(subset(projects,trackval==1&!impact_survey)$et_siteid)
+
+PF_dedupe_SEM<-subset(PartFrame_dedupe,et_siteid%in%AllSEM) %>% left_join(select(sample_tracking,"PrimaryContact","Sample","years"),by=c("Primary_Contact"="PrimaryContact"))
+table(PF_dedupe_SEM$Sample[!is.na(PF_dedupe_SEM$Sample)])
+
+AddSEM<-subset(PF_dedupe_SEM,!is.na(Sample)&Sample=="")
+### Manually added by KR on 10/24
+
 # non-parts
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
 
