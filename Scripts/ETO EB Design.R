@@ -239,6 +239,17 @@ table(PF_dedupe_SEM$Sample[!is.na(PF_dedupe_SEM$Sample)])
 AddSEM<-subset(PF_dedupe_SEM,!is.na(Sample)&Sample=="")
 ### Manually added by KR on 10/24
 
+# 3X TRA SEM (from Custom)
+Cust1<-read.csv("~/desktop/HL ETO CUST SAMPS/ETO_EB_SEM_Custom__pre_test.csv",stringsAsFactors = FALSE) %>% select("PrimaryContact","track","Unsubscribed")
+Cust2<-read.csv("~/desktop/HL ETO CUST SAMPS/ETO_custom_wave2.csv",stringsAsFactors = FALSE) %>% select("PrimaryContact","track","Unsubscribed")
+Cust3<-read.csv("~/desktop/HL ETO CUST SAMPS/Custom_wave_3.csv",stringsAsFactors = FALSE) %>% select("PrimaryContact","track","Unsubscribed")
+Cust4<-read.csv("~/desktop/HL ETO CUST SAMPS/Custom_wave4.csv",stringsAsFactors = FALSE) %>% select("PrimaryContact","track","Unsubscribed")
+Cust5<-read.csv("~/desktop/HL ETO CUST SAMPS/Custom___wave5.csv",stringsAsFactors = FALSE) %>% select("PrimaryContact","track","Unsubscribed")
+
+CustSamp<-bind_rows(Cust1,Cust2,Cust3,Cust4,Cust5)
+PF_dedupe_Custom<-subset(PartFrame_dedupe,et_siteid%in%AllSEM) %>% left_join(CustSamp,by=c("Primary_Contact"="PrimaryContact")) %>% filter(grepl("Custom",segment)&is.na(Unsubscribed))
+### Manually added by KR on 10/26
+
 # non-parts
 nonpartproj<-subset(projects,programdescription=="")$et_siteid
 
