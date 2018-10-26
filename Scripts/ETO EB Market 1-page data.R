@@ -241,34 +241,42 @@ combo_data<-function(data=Proj_Pop,sector){
     Lighting=grepl("Lighting",combo))
 }
 
-table_data<-function(data=Proj_Pop,sector,for_pene=FALSE){
+table_data<-function(data=Proj_Pop,sector,for_pene=FALSE,full_pop=overview_full){
   pop_dat<-data %>%
     filter(naicsgroup==sector) %>% 
     left_join(State_adj %>% filter(naicsgroup==sector),by="naicsgroup") %>% 
+    group_by(Group="Total (est)") %>% 
     summarise(Sites=unique(Units),
       GWh=(sum(kwh2017[participation=="Participant"],na.rm = TRUE)+sum(kwh2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6,
-      `Therms (Millions)`=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6)
+      `Therms (MM)`=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6)
     
   part_dat<-data %>% 
     filter(naicsgroup==sector) %>% 
     filter(participation=="Participant") %>% 
-    summarise(Sites=n_distinct(et_siteid),GWh=sum(kwh2017,na.rm = TRUE)/1e6,`Therms (Millions)`=sum(therms2017,na.rm = TRUE)/1e6)
+    group_by(Group="Participants") %>% 
+    summarise(Sites=n_distinct(et_siteid),GWh=sum(kwh2017,na.rm = TRUE)/1e6,`Therms (MM)`=sum(therms2017,na.rm = TRUE)/1e6)
   
-  nonpart_dat<-pop_dat-part_dat
+  nonpart_dat<-pop_dat[,2:4]-part_dat[,2:4]
+  nonpart_dat$Group<-"Non-Participants"
   
   save_dat<-data %>%
     filter(naicsgroup==sector) %>% 
-    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,`Therms (Millions)`=sum(Therms_savings)/1e6)
+    group_by(Group="Savings") %>% 
+    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,`Therms (MM)`=sum(Therms_savings)/1e6)
   
-  full_dat<-bind_rows(pop_dat,nonpart_dat,part_dat,save_dat)
-  row.names(full_dat)<-c("Total (est)","Non-Participant", "Participant","Savings")
+  full_dat<-bind_rows(pop_dat,nonpart_dat,part_dat,save_dat) %>% 
+    left_join(full_pop,0,by="Group") %>% 
+    mutate(`% Sites`=round(Sites/`All Sites`*100,1),
+      `% GWh`=round(GWh/`All GWh`*100,1),
+      `% Therms`=round(`Therms (MM)`/`All Therms (MM)`*100,1))
+  
+  full_dat[,2:7]<-round(full_dat[,2:7],0)
   
   if(for_pene==TRUE){
-    full_dat$pop<-row.names(full_dat)
     full_dat<-full_dat %>% 
-      filter(pop=="Participant"|pop=="Non-Participant") %>% 
-      mutate(`Site Penetration`=Sites/sum(Sites),`Energy Penetration`=GWh/sum(GWh),`Gas Penetration`=`Therms (Millions)`/sum(`Therms (Millions)`)) %>% 
-      select(-Sites,-GWh,-`Therms (Millions)`)
+      filter(Group=="Participants"|Group=="Non-Participants") %>% 
+      mutate(`Number of Sites`=Sites/sum(Sites),`Electricity Usage`=GWh/sum(GWh),`Gas Usage`=`Therms (MM)`/sum(`Therms (MM)`)) %>% 
+      select(-Sites,-GWh,-`Therms (MM)`)
   }
   
   return(full_dat)
@@ -280,21 +288,25 @@ table_data_pop<-function(data=Proj_Pop){
     group_by(naicsgroup) %>% 
     summarise(Sites=unique(Units),
       GWh=(sum(kwh2017[participation=="Participant"],na.rm = TRUE)+sum(kwh2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6,
-      `Therms (Millions)`=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6) %>% 
-    summarise(Sites=sum(Sites,na.rm = TRUE),GWh=sum(GWh),`Therms (Millions)`=sum(`Therms (Millions)`))
+      `Therms (MM)`=(sum(therms2017[participation=="Participant"],na.rm = TRUE)+sum(therms2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6) %>% 
+    group_by(Group="Total (est)") %>% 
+    summarise(Sites=sum(Sites,na.rm = TRUE),GWh=sum(GWh),`Therms (MM)`=sum(`Therms (MM)`))
     
   part_dat<-data %>% 
     filter(participation=="Participant") %>% 
-    summarise(Sites=n_distinct(et_siteid),GWh=sum(as.numeric(kwh2017),na.rm = TRUE)/1e6,`Therms (Millions)`=sum(therms2017,na.rm = TRUE)/1e6)
+    group_by(Group="Participants") %>% 
+    summarise(Sites=n_distinct(et_siteid),GWh=sum(as.numeric(kwh2017),na.rm = TRUE)/1e6,`Therms (MM)`=sum(therms2017,na.rm = TRUE)/1e6)
   
-  nonpart_dat<-pop_dat-part_dat
+  nonpart_dat<-pop_dat[,2:4]-part_dat[,2:4]
+  nonpart_dat$Group<-"Non-Participants"
   
   save_dat<-data %>%
-    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,`Therms (Millions)`=sum(Therms_savings)/1e6)
+    group_by(Group="Savings") %>% 
+    summarise(Sites=sum(kWh_savings>0|Therms_savings>0,na.rm = TRUE),GWh=sum(kWh_savings,na.rm = TRUE)/1e6,`Therms (MM)`=sum(Therms_savings)/1e6)
   
   full_dat<-bind_rows(pop_dat,nonpart_dat,part_dat,save_dat)
-  row.names(full_dat)<-c("Total (est)","Non-Participant", "Participant","Savings")
-  
+  colnames(full_dat)<-c("Group","All Sites","All GWh","All Therms (MM)")
+
   return(full_dat)
 }
 
@@ -362,10 +374,10 @@ comb_funct<-function(data=combos,track,metric="percent"){
 pie_plot<-function(data=pie_dat){
   ggplot(data %>% filter(fuel_size!="Unknown"))+
   geom_bar(aes(x="",y=value,fill=variable),stat = "identity",position = "fill",width = 1,color="black",size=0)+
-  # geom_text(aes(x="",y=value,label=round(value*100,0)))+
+  geom_text(data=subset(data,fuel_size!="Unknown"&variable=="N1"),aes(x="",y=1-value/2,label=paste0(round(value*100,0),"%")),size=3)+
   coord_polar("y")+
   theme(
-    text=element_text(size=14),
+    text=element_text(size=9),
     legend.text = element_text(size=7),
     legend.title = element_text(size=8),
     legend.key.size = unit(.25,"inches"),
@@ -374,38 +386,42 @@ pie_plot<-function(data=pie_dat){
     axis.title.y = element_blank(),
     axis.title.x = element_text(face = "bold",size=11),
     axis.ticks = element_blank(),
-    strip.text.x = element_blank(),
+    # strip.text.x = element_blank(),
     legend.margin=margin(0,0,0,0),
     legend.box.margin=margin(0,-4,0,0),
     plot.margin = margin(-10,0,-10,0),
     axis.line = element_blank(),
     plot.title = )+
-  labs(fill="Tracks per \nSite",y="Number of Tracks per Site")+
+  labs(fill="Tracks per \nSite",title=NULL,y=NULL)+
   scale_fill_manual(
     values = c("#99CC33","darkorange","#999933","#666699","black"),
     breaks = c("N1","N2","N3","N4","N5"),
     labels = c("One","Two","Three","Four","Five"))+
-  facet_grid(.~fuel_size)
+  facet_grid(.~fuel_size,switch="x")
 }
 
-comb_plot<-function(CombFull,TextFull){
+comb_plot<-function(CombFull,TextFull,Size_Count){
+  Size_Count$new_lab<-paste(Size_Count$Var1," (n = ",Size_Count$Freq,")",sep="")
   ggplot(CombFull %>% filter(fuel_size!="Unknown") %>% 
+    left_join(Size_Count,by=c("fuel_size"="Var1")) %>% 
     mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))))+
   geom_tile(aes(x=variable,fill=value*100,y=1))+
   geom_text(data=TextFull %>% filter(fuel_size!="Unknown") %>%
+      left_join(Size_Count,by=c("fuel_size"="Var1")) %>%
       mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))),
     aes(x=variable,y=1,label=value),size=3)+
-  theme(text=element_text(size=10),
+  theme(text=element_text(size=8),
     axis.text.x = element_text(angle = 0, hjust = .5,size=6),
     axis.text.y = element_blank(),axis.ticks.y = element_blank(),
     axis.line.y = element_blank(),
     strip.text.y = element_text(angle = 180),
-    strip.text.x = element_text(size = 12))+
+    strip.text.x = element_text(size = 10),
+    plot.margin = margin(-10,0,-10,0))+
   scale_fill_gradient2(high = "red",low="green",mid = "yellow",midpoint = 50,na.value = "gray90",guide = FALSE)+
   scale_x_discrete(position = "top")+
   coord_fixed(ratio = 1)+
-  labs(y=NULL,x=NULL,fill="% (by row)",title="Combinations of Tracks at Sites")+
-  facet_grid(t_f~fuel_size,switch = "both")
+  labs(y=NULL,x=NULL,fill="% (by row)",title=NULL)+
+  facet_grid(t_f~new_lab,switch = "both")
 }
 
 freq_plot<-function(for_heat,size_count){
@@ -414,12 +430,12 @@ freq_plot<-function(for_heat,size_count){
   geom_tile(aes(x=fuel_size,
     y=factor(variable,levels = rev(c("SEM","Custom","DI","Standard","Lighting","Total"))),
     fill=value*100),color="black")+
-  scale_fill_gradient2(high = "#000000",low="#00ff00",mid="#008700",midpoint = 50,limit=c(0,100))+
+  scale_fill_gradient2(low = "white",mid ="#00ff00",high ="black",midpoint = 50,limit=c(0,100))+
   # geom_text(aes(x=variable,y=fuel_size,label=round(value*Freq,0)),size=2)+
   geom_text(aes(x=fuel_size,
     y=factor(variable,levels = rev(c("SEM","Custom","DI","Standard","Lighting","Total"))),
-    label=round(value*Freq,0)),size=2)+
-   labs(title="Project Type as a \nPercentage of Total Projects",y="Project Track",
+    label=format(round(value*Freq,0),big.mark=",")),size=2,color="black")+
+   labs(title=NULL,y="Project Track",
     x="Site Size",fill="Percentage \n(of size group)")+
   theme(axis.text.x = element_text(angle = 0, hjust = .5,size = 5),
     text = element_text(size=6),
@@ -430,19 +446,20 @@ freq_plot<-function(for_heat,size_count){
 }
 
 pene_plot<-function(data){
-  ggplot(data %>% melt(id.vars="pop"))+
-    geom_bar(aes(x=variable,y=value,fill=pop),stat = "identity",position = "fill")+
-      labs(y="Percentage",x="Metric",title="Distribution Between \nParticipants and Non-Participants",fill="Participation")+
+  ggplot(data %>% select("Number of Sites",contains("Usage"),"Group") %>% melt(id.vars="Group"))+
+    geom_bar(aes(x=variable,y=value,fill=Group),stat = "identity",position = "fill")+
+      labs(y="Percentage",x="Metric",title=NULL,fill="Participation \nStatus")+
       scale_fill_manual(
         values = c("#99CC33","darkorange"),
-        breaks = c("Participant","Non-Participant"),
+        breaks = c("Participants","Non-Participants"),
         labels = c("Participants","Non-Participants")
       )+
       scale_y_continuous(labels = scales::percent)+
       theme(
-        text = element_text(size=8),
-        axis.text = element_text(size=6),
-        plot.title = element_text(size=10))+
+        text = element_text(size=5),
+        axis.text = element_text(size=5),
+        plot.title = element_text(size=6),
+        plot.margin = margin(-10,0,-10,-10))+
       coord_flip()
 }
 
@@ -455,10 +472,14 @@ map_plot<-function(data){
     geom_polygon(data = plot_dat, aes(x = long, y = lat,group=group,fill = value), color = "black", size = .3)+
     # scale_fill_gradient2(mid="white",high="red",low="blue",midpoint = 0,limits=c(-3,3))+
     scale_fill_gradientn(colors = rev(c("#ff0000","#ff6666","white","#9ebbff","#004CFF")),limits=c(-10,10))+
-    labs(fill="Savings % - \nUsage %",title="Regional Variation:\n Difference of Subsector Participant Savings and \nSubsector Participant Usage")+
-    theme(axis.title = element_blank(),axis.text = element_blank(),axis.ticks = element_blank(),axis.line = element_blank(),
-    text = element_text(size=8),
-    plot.title = element_text(size=8))+
+    labs(fill="Savings % - \nUsage %",title=NULL)+
+    theme(axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      plot.margin = margin(-10,0,-10,-10),
+      axis.line = element_blank(),
+    text = element_text(size=7),
+    plot.title = element_text(size=6))+
     facet_grid(.~variable)
 }
 
@@ -474,10 +495,10 @@ for (i in sectors){
   # sect_dat<-subset(Proj_Pop,naicsgroup==i)
   
   overview<-table_data(sector = i)
-  overview_metric<-overview %>% mutate(pop=row.names(.),Sector=i) %>% filter(pop=="Total (est)") %>% select(Sector,Sites,GWh,`Therms (Millions)`)
+  overview_metric<-overview %>% mutate(Sector=i) %>% filter(Group=="Total (est)") %>% select(Sector,Sites,GWh,`Therms (MM)`)
   
   penetration<-table_data(sector = i,for_pene = TRUE)
-  pene_metrics<-penetration %>% filter(pop=="Participant") %>% mutate(Sector=i) %>% select(Sector,`Site Penetration`,`Energy Penetration`,`Gas Penetration`)
+  pene_metrics<-penetration %>% filter(Group=="Participants") %>% mutate(Sector=i) %>% select(Sector,`Number of Sites`,`Electricity Usage`,`Gas Usage`)
   
   map<-data_for_map(sector = i)
   map_metrics<-map %>% 
@@ -575,8 +596,12 @@ for (i in sectors){
 }
 
 # Summary Table
+rm(overview_metric,pene_metric,pie_metric,map_metric,Summary_Table)
 
 overview_metric<-bind_rows(mget(apropos("overview_metric")))
+overview_metric$GWh<-round(overview_metric$GWh,0)
+overview_metric$`Therms (MM)`<-round(overview_metric$`Therms (MM)`,0)
+
 pene_metric<-bind_rows(mget(apropos("pene_metric")))
 pie_metric<-bind_rows(mget(apropos("pie_metric")))
 map_metric<-bind_rows(mget(apropos("map_metrics")))
@@ -585,7 +610,7 @@ Summary_Table<-left_join(overview_metric,pene_metric) %>% left_join(map_metric) 
 
 pie_plot(data = pie_dat_Grocery)
 
-comb_plot(CombFull = `CombFull_Higher Education`,TextFull = `TextFull_Higher Education`)
+comb_plot(CombFull = `CombFull_Higher Education`,TextFull = `TextFull_Higher Education`,Size_Count = `size_count_Higher Education`)
 
 freq_plot(for_heat = for_heat_Hospitality,size_count = size_count_Hospitality)
 
