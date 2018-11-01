@@ -19,22 +19,22 @@ test_site$abs_diff_volts<-test_site$Mains_L1_volts..V.-test_site$Mains_L2_volts.
 test_site$p_diff_volts<-test_site$abs_diff_volts/test_site$Mains_L1_volts..V.*100
 
 test_site$abs_diff_Mains<-(test_site$Mains_kW..kW.-test_site$Mains_kW_ALT..kW.)*1000
-# test_site$abs_diff_Mains[test_site$Mains_kW..kW.<.05]<-NA
+test_site$abs_diff_Mains[test_site$Mains_kW..kW.<.05]<-NA
 test_site$p_diff_Mains<-test_site$abs_diff_Mains/test_site$Mains_kW..kW.
 test_site$p_diff_Mains[abs(test_site$Mains_kW..kW.)<.001]<-NA
 
 test_site$abs_diff_Furnace<-(test_site$Furnace..kW.-test_site$Furnace_ALT..kW.)*1000
-# test_site$abs_diff_Furnace[test_site$Furnace..kW.<.05]<-NA
+test_site$abs_diff_Furnace[test_site$Furnace..kW.<.05]<-NA
 test_site$p_diff_Furnace<-test_site$abs_diff_Furnace/test_site$Furnace..kW./1000*100
 test_site$p_diff_Furnace[abs(test_site$Furnace..kW.)<.001]<-NA
 
 test_site$abs_diff_Water_Heater<-(test_site$Water_Heater..kW.-test_site$Water_Heater_ALT..kW.)*1000
-# test_site$abs_diff_Water_Heater[test_site$Water_Heater..kW.<.05]<-NA
+test_site$abs_diff_Water_Heater[test_site$Water_Heater..kW.<.05]<-NA
 test_site$p_diff_Water_Heater<-test_site$abs_diff_Water_Heater/test_site$Water_Heater..kW./1000*100
 test_site$p_diff_Water_Heater[abs(test_site$Water_Heater..kW.)<.001]<-NA
 
 test_site$abs_diff_Well_Pump<-(test_site$Well_Pump..kW.-test_site$Well_Pump_ALT..kW.)*1000
-# test_site$abs_diff_Well_Pump[test_site$Well_Pump..kW.<.05]<-NA
+test_site$abs_diff_Well_Pump[test_site$Well_Pump..kW.<.05]<-NA
 test_site$p_diff_Well_Pump<-test_site$abs_diff_Well_Pump/test_site$Well_Pump..kW./1000*100
 test_site$p_diff_Well_Pump[abs(test_site$Well_Pump..kW.)<.001]<-NA
 
@@ -61,27 +61,58 @@ melted_data<-test_site %>%
   melt(id.vars="timestamp")
 
 ggplot(melted_data %>% filter(grepl("abs_diff",variable)))+
-  geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
-  labs(y="Watts",x="EU",title="Distribution of Wattage Difference")+
-  coord_cartesian(ylim = c(-2,.5))
-# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Watt_Difference_by_EU.jpg",device = "jpeg")
+  geom_boxplot(aes(x=variable,y=value),outlier.size = .001)+
+  labs(y="Watts",x="Circuit",title=NULL)+
+  coord_cartesian(ylim = c(-20,50))+
+  scale_x_discrete(labels = c(
+    "abs_diff_Mains" = "Mains",
+    "abs_diff_Furnace" = "Furnace",
+    "abs_diff_Water_Heater" = "Water Heater",
+    "abs_diff_Well_Pump" = "Well Pump"))+
+  theme_minimal()
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Watt_Difference_by_EU_50W.jpg",device = "jpeg",width = 6, height = 4)
 
 ggplot(melted_data %>% filter(grepl("p_diff",variable)))+
-  geom_boxplot(aes(x=variable,y=value),outlier.size = .3)+
-  labs(y="% Difference",x="EU",title="Distribution of % Wattage Difference")+
-  coord_cartesian(ylim = c(-3,3))
+  geom_boxplot(aes(x=variable,y=value),outlier.size = .001)+
+  labs(y="% Difference",x="Circuit",title=NULL)+
+  coord_cartesian(ylim = c(-2,2))+
+  scale_x_discrete(labels = c(
+    "p_diff_Mains" = "Mains",
+    "p_diff_Furnace" = "Furnace",
+    "p_diff_Water_Heater" = "Water Heater",
+    "p_diff_Well_Pump" = "Well Pump"))+
+  theme_minimal()
 
-# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_by_EU.jpg",device = "jpeg")
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_by_EU_50W.jpg",device = "jpeg",width = 6, height = 4)
 
 # Investigate patterns
 ## bivairiate continuous
 
 ggplot(test_site,aes(x=Furnace..kW.,y=abs_diff_Furnace))+
-  geom_rug()+
-  geom_bin2d(binwidth=c(.0025,.04))+
-  labs(x="Furnace kW",y="Watt difference",title="Watt diff by Usage")
+  geom_rug(size=.01)+
+  geom_bin2d(binwidth=c(.004,.08),alpha=1)+
+  geom_vline(xintercept =.05,linetype=2,size=.5)+
+  theme_minimal()+
+  theme(
+    legend.text = element_text(size=6),
+    legend.title = element_text(size = 8))+
+  scale_fill_gradient(high = "dark green",low = "light green")+
+  labs(x="Furnace kW",y="Wattage Difference",title=NULL,fill="Count")
 
-# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Difference_by_Usage_Furnace.jpg",device = "jpeg")
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Difference_by_Usage_Furnace.jpg",device = "jpeg",width = 6, height = 4)
+
+ggplot(test_site,aes(x=Furnace..kW.,y=p_diff_Furnace))+
+  geom_rug(size=.01)+
+  geom_bin2d(binwidth=c(.004,.04),alpha=1)+
+  geom_vline(xintercept =.05,linetype=2,size=.5)+
+  theme_minimal()+
+  theme(
+    legend.text = element_text(size=6),
+    legend.title = element_text(size = 8))+
+  scale_fill_gradient(high = "dark green",low = "light green")+
+  labs(x="Furnace kW",y="Percent Difference",title=NULL,fill="Count")
+
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_by_Usage_Furnace.jpg",device = "jpeg",width = 6, height = 4)
 
 ggplot(test_site,aes(x=Mains_kW..kW.,y=abs_diff_Mains))+
   geom_rug()+
@@ -115,12 +146,22 @@ ggplot(test_site,aes(x=timestamp,y=p_diff_Mains))+
 # ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_Mains_OT.jpg",device = "jpeg")
 
 ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Mains))+
-  geom_boxplot()+
-  labs(x="Hour of Day",y="% Difference",title="Mains % Diff by Hour")+
-  scale_y_continuous(limits = c(-3,1))
+  geom_boxplot(outlier.size = .1)+
+  theme_minimal()+
+  labs(x="Hour of Day",y="% Difference",title=NULL)+
+  scale_y_continuous(limits = c(-2,1))
   # scale_y_continuous(limits = c(0,3))
 
-# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_Mains_by_Hour.jpg",device = "jpeg")
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Percent_Difference_Mains_by_Hour.jpg",device = "jpeg",height = 4, width = 6)
+
+ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=Mains_kW..kW.))+
+  geom_boxplot(outlier.size = .1)+
+  theme_minimal()+
+  labs(x="Hour of Day",y="Home Home kW Usage",title=NULL)+
+  scale_y_continuous(limits = c(0,2))
+  # scale_y_continuous(limits = c(0,3))
+
+# ggsave(filename = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Power_Mains_by_Hour.jpg",device = "jpeg",height = 4, width = 6)
 
 ggplot(test_site,aes(x=as.factor(hour(timestamp)),y=p_diff_Furnace))+
   geom_boxplot()+
