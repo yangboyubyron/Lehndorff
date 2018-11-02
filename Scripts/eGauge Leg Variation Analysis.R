@@ -202,25 +202,20 @@ error_calc<-function(data,subset){
     Subset=subset,
     obs=n(),
     Mains_nmbe=tdStats(Mains_kW..kW.,Mains_kW_ALT..kW.,functions="nmbe"),
-    Mains_rmse=tdStats(Mains_kW..kW.,Mains_kW_ALT..kW.,functions="rmse"),
-    Mains_cvrmse=tdStats(Mains_kW..kW.,Mains_kW_ALT..kW.,functions="cvrmse"),
     Furnace_nmbe=tdStats(Furnace..kW.,Furnace_ALT..kW.,functions="nmbe"),
-    Furnace_rmse=tdStats(Furnace..kW.,Furnace_ALT..kW.,functions="rmse"),
-    Furnace_cvrmse=tdStats(Furnace..kW.,Furnace_ALT..kW.,functions="cvrmse"),
     Water_Heater_nmbe=tdStats(Water_Heater..kW.,Water_Heater_ALT..kW.,functions="nmbe"),
-    Water_Heater_rmse=tdStats(Water_Heater..kW.,Water_Heater_ALT..kW.,functions="rmse"),
-    Water_Heater_cvrmse=tdStats(Water_Heater..kW.,Water_Heater_ALT..kW.,functions="cvrmse"),
     Well_Pump_nmbe=tdStats(Well_Pump..kW.,Well_Pump_ALT..kW.,functions="nmbe"),
-    Well_Pump_rmse=tdStats(Well_Pump..kW.,Well_Pump_ALT..kW.,functions="rmse"),
+    Mains_cvrmse=tdStats(Mains_kW..kW.,Mains_kW_ALT..kW.,functions="cvrmse"),
+    Furnace_cvrmse=tdStats(Furnace..kW.,Furnace_ALT..kW.,functions="cvrmse"),
+    Water_Heater_cvrmse=tdStats(Water_Heater..kW.,Water_Heater_ALT..kW.,functions="cvrmse"),
     Well_Pump_cvrmse=tdStats(Well_Pump..kW.,Well_Pump_ALT..kW.,functions="cvrmse")
   )
 }
 
 All<-test_site %>% filter() %>% error_calc(.,subset = "All")
-On_Main<-test_site %>% filter(Mains_kW..kW.>=.001) %>% error_calc(.,subset = "Main On")
-On_Furnace<-test_site %>% filter(Furnace..kW.>=.001) %>% error_calc(.,subset = "Furnace On")
-On_WH<-test_site %>% filter(Water_Heater..kW.>=.001) %>% error_calc(.,subset = "Water Heater On")
-On_WP<-test_site %>% filter(Well_Pump..kW.>=.001) %>% error_calc(.,subset = "Water Pump On")
+On_Furnace<-test_site %>% filter(Furnace..kW.>=.015) %>% error_calc(.,subset = "Furnace On")
+On_WH<-test_site %>% filter(Water_Heater..kW.>=.015) %>% error_calc(.,subset = "Water Heater On")
+On_WP<-test_site %>% filter(Well_Pump..kW.>=.015) %>% error_calc(.,subset = "Water Pump On")
 High_Main<-test_site %>% filter(Mains_kW..kW.>=quantile(Mains_kW..kW.,.9)) %>% error_calc(.,subset = "High Main")
 High_Furnace<-test_site %>% filter(Furnace..kW.>=quantile(Furnace..kW.,.9)) %>% error_calc(.,subset = "High Furnace")
 High_WH<-test_site %>% filter(Water_Heater..kW.>=quantile(Water_Heater..kW.,.9)) %>% error_calc(.,subset = "High Water Heater")
@@ -229,7 +224,7 @@ Peak<-test_site %>% filter(hour(timestamp)>=15&hour(timestamp)<20) %>% error_cal
 Non_Peak<-test_site %>% filter(!(hour(timestamp)>=15&hour(timestamp)<20)) %>% error_calc(.,subset = "Non-Peak")
 After_6pm<-test_site %>% filter(hour(timestamp)>=18) %>% error_calc(.,subset = "After 6 PM")
 
-Error_Summary<-bind_rows(All,On_Main,On_Furnace,On_WH,On_WP,High_Main,High_Furnace,High_WH,High_WP,Peak,Non_Peak,After_6pm)
+Error_Summary<-bind_rows(All,On_Furnace,On_WH,On_WP,High_Main,High_Furnace,High_WH,High_WP,Peak,Non_Peak,After_6pm)
 
 # write.xlsx(Error_Summary,file = "/volumes/Projects Berkeley/416034 - NEEA EULR/Analysis/egauge test data from Site/Plots/Error_Summary.xlsx",sheetName = "Errors by Period",row.names = FALSE)
 
