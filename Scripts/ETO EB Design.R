@@ -198,6 +198,22 @@ for (i in unique(PartFrame_dedupe$segment)){
   }
 }
 
+# Title analysis
+Title_analysis<-PartFrame_dedupe %>% left_join(PartCon %>% ungroup() %>% select(CRMContactName,CRMContactRole),by=c("Primary_Contact" = "CRMContactName")) %>% 
+  select(Primary_Contact,sector,most_common_sector,kwh2017,therms2017,CRMContactRole) %>% distinct() %>% group_by(Primary_Contact) %>% mutate(n=1:n()) %>% filter(n==1)
+
+title_agg<-Title_analysis %>% 
+  group_by(sector) %>% 
+  summarise(
+    total=n(),
+    Lead=sum(CRMContactRole=="LEAD"),
+    ACCTSREC=sum(CRMContactRole=="ACCTSREC"),
+    Owner=sum(CRMContactRole=="OWNER"),
+    SYSOWNR=sum(CRMContactRole=="SYSOWNR"),
+    Other=total-Lead-ACCTSREC-Owner-SYSOWNR)
+
+write.csv(title_agg,"~/desktop/Title_analysis.csv",row.names = FALSE)
+
 # Extra SEM sites
 ExtraSEM<-subset(projects,!et_siteid%in%PartFrame_dedupe$et_siteid&trackval==1&!impact_survey) %>% 
   arrange(-workingkwh) %>% 
