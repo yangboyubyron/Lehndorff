@@ -300,7 +300,7 @@ ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
     text = element_text(family = "Helvetica",size=10),
     panel.grid.major.y = element_blank(),
     strip.placement = "outside",
-    strip.text.y = element_text(angle = 180),
+    strip.text.y = element_text(angle = 180,hjust = 1),
     axis.text.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
   labs(y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
@@ -471,6 +471,26 @@ SiPDC_Table<-counts_adj_part_size %>%
 
 # write.xlsx(SiPDC_Table,file = "/users/lehndorff/desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Adj Count Size Date Table",append = TRUE,row.names = FALSE)
 
+# adjusted table
+adj_table<-counts_adj %>% 
+  filter(naicsgroup!="Industrial"&naicsgroup!="Multifamily"&naicsgroup!="Multifamily/Residential") %>% 
+  group_by(Sector=naicsgroup) %>% 
+  summarise(
+    `Total Commercial Sites`=sum(count_adj),
+    `Count Participants`=sum(count_adj[participation=="Participant"]),
+    `Percent of Participants` = `Count Participants`/sum(counts_adj$count_adj[participation=="Participant"]),
+    `Count Non-Participants` = sum(count_adj[participation=="Non-Participant"]),
+    `Percent of Non-Participants`=`Count Non-Participants`/sum(counts_adj$count_adj[participation=="Non-Participant"]),
+    `Count of Large Sites`=sum(count_adj[fuel_size=="Large"]),
+    `Percent of Large Sites`=`Count of Large Sites`/sum(counts_adj$count_adj[fuel_size=="Large"]),
+    `Count of Medium Sites`=sum(count_adj[fuel_size=="Medium"]),
+    `Percent of Medium Sites`=`Count of Medium Sites`/sum(counts_adj$count_adj[fuel_size=="Medium"]),
+    `Count of Small Sites`=sum(count_adj[fuel_size=="Small"]),
+    `Percent of Small Sites`=`Count of Small Sites`/sum(counts_adj$count_adj[fuel_size=="Small"])) %>% 
+  data.frame()
+
+# write.xlsx(adj_table,file = "/users/lehndorff/desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Adj Table",append = TRUE,row.names = FALSE)
+
 # alternate size participation levels for charts
 fuel_part_levels2<-c("Non-Participant","Large Participant","Medium Participant","Small Participant","Unknown Size Participant")
 
@@ -521,7 +541,7 @@ characterization_recent_kwh$text[characterization_recent_kwh$kwh_adj>600000000&c
 # •	Summary of commercial customers by kWh usage
 ggplot(characterization_recent_kwh %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj/1e6,fill=factor(recent_part,recent_levels)))+
-  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant (count)","Recent Participant","Past Participant"))+
+  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant","Recent Participant","Past Participant"))+
   geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text/1e6,label=label))+
   coord_flip()+
   theme_minimal()+
@@ -612,7 +632,7 @@ characterization_recent_therms$text[characterization_recent_therms$therms_adj>20
 # •	Summary of commercial customer by therm usage
 ggplot(characterization_recent_therms %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj/1e6,fill=factor(recent_part,recent_levels)))+
-  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant (count)","Recent Participant","Past Participant"))+
+  scale_fill_manual(values = EEcolors5,labels=c("Non-Participant","Recent Participant","Past Participant"))+
   geom_text(aes(x=factor(naicsgroup,levels=NAICS_levels),y=text/1e6,label=count_adj))+
   coord_flip()+
   theme_minimal()+
