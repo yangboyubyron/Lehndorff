@@ -167,10 +167,10 @@ track_levels<-c("Non-Participant","SEM","Custom","DI","Standard","Lighting","Oth
 
 # determine participation recency
 population$recent_part<-"Non-Participant"
+population$recent_part[(population$date<"2017-01-01"&!is.na(population$date))|population$participation=="Participant"]<-"Past Participant"
 population$recent_part[population$date>="2017-01-01"&!is.na(population$date)]<-"Recent Participant"
-population$recent_part[population$date<"2017-01-01"&!is.na(population$date)]<-"Past Participant"
 
-table(population$recent_part)
+table(population$recent_part,population$participation)
 
 # recency order for charts
 recent_levels<-c("Non-Participant","Recent Participant","Past Participant")
