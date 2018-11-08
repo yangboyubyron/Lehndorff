@@ -3,7 +3,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(reshape2)
-library(cowplot)
+# library(cowplot)
 library(knitr)
 library(maps)
 
@@ -257,6 +257,7 @@ table_data<-function(data=Proj_Pop,sector,for_pene=FALSE,full_pop=overview_full)
     summarise(Sites=n_distinct(et_siteid),GWh=sum(kwh2017,na.rm = TRUE)/1e6,`Therms (MM)`=sum(therms2017,na.rm = TRUE)/1e6)
   
   nonpart_dat<-pop_dat[,2:4]-part_dat[,2:4]
+  if(nonpart_dat$Sites==0){nonpart_dat<-nonpart_dat*0}
   nonpart_dat$Group<-"Non-Participants"
   
   save_dat<-data %>%
@@ -285,6 +286,7 @@ table_data<-function(data=Proj_Pop,sector,for_pene=FALSE,full_pop=overview_full)
 table_data_pop<-function(data=Proj_Pop){
   pop_dat<-data %>%
     left_join(State_adj,by="naicsgroup") %>% 
+    filter(!grepl("Multif",naicsgroup)&naicsgroup!="Industrial") %>% 
     group_by(naicsgroup) %>% 
     summarise(Sites=unique(Units),
       GWh=(sum(kwh2017[participation=="Participant"],na.rm = TRUE)+sum(kwh2017[participation=="Non-Participant"]*adj[participation=="Non-Participant"],na.rm = TRUE))/1e6,
@@ -365,17 +367,23 @@ comb_funct<-function(data=combos,track,metric="percent"){
     ) %>% 
   select(-total) %>% 
   melt(id.vars=c("Track","fuel_size")) %>% 
-      mutate(value=ifelse(variable=="Total",round(value,0),paste(round(value*100,0),"%",sep="")))
+      mutate(value=ifelse(variable=="Total",format(value,digits = 0, big.mark = ","),paste(ceiling(value*100),"%",sep="")))
     
   return(comb_out)
   }
 }
 
-pie_plot<-function(data=pie_dat){
-  ggplot(data %>% filter(fuel_size!="Unknown"))+
+pie_plot<-function(data=pie_dat,Size_Count){
+  Size_Count$new_lab<-paste(Size_Count$Var1," Participants (n = ",format(Size_Count$Freq,big.mark = ",",trim = TRUE),")",sep="")
+  data<-data %>% filter(fuel_size!="Unknown") %>% 
+    left_join(Size_Count,by=c("fuel_size"="Var1")) %>% 
+    group_by(fuel_size) %>% 
+    mutate(loc=1-cumsum(value))
+  ggplot(data)+
   geom_bar(aes(x="",y=value,fill=variable),stat = "identity",position = "fill",width = 1,color="black",size=0)+
-  geom_text(data=subset(data,fuel_size!="Unknown"&variable=="N1"),aes(x="",y=1-value/2,label=paste0(round(value*100,0),"%")),size=3)+
+  geom_text(data=subset(data,fuel_size!="Unknown"),aes(x=1.1,y=loc+value/2,label=ifelse(value>=.1,paste0(round(value*100,0),"%"),"")),size=3)+
   coord_polar("y")+
+  theme_classic()+
   theme(
     text=element_text(size=9),
     legend.text = element_text(size=7),
@@ -391,17 +399,18 @@ pie_plot<-function(data=pie_dat){
     legend.box.margin=margin(0,-4,0,0),
     plot.margin = margin(-10,0,-10,0),
     axis.line = element_blank(),
+    strip.background = element_rect(color = "gray",fill = "gray"),
     plot.title = )+
   labs(fill="Tracks per \nSite",title=NULL,y=NULL)+
   scale_fill_manual(
-    values = c("#99CC33","darkorange","#999933","#666699","black"),
+    values = c("#73b633","gray80","#005c9c","#5ebcdf","#2f2860"),
     breaks = c("N1","N2","N3","N4","N5"),
     labels = c("One","Two","Three","Four","Five"))+
-  facet_grid(.~fuel_size,switch="x")
+  facet_grid(.~new_lab,switch="x")
 }
 
 comb_plot<-function(CombFull,TextFull,Size_Count){
-  Size_Count$new_lab<-paste(Size_Count$Var1," (n = ",Size_Count$Freq,")",sep="")
+  Size_Count$new_lab<-paste(Size_Count$Var1," Participants (n = ",format(Size_Count$Freq,big.mark = ",",trim = TRUE),")",sep="")
   ggplot(CombFull %>% filter(fuel_size!="Unknown") %>% 
     left_join(Size_Count,by=c("fuel_size"="Var1")) %>% 
     mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))))+
@@ -410,14 +419,17 @@ comb_plot<-function(CombFull,TextFull,Size_Count){
       left_join(Size_Count,by=c("fuel_size"="Var1")) %>%
       mutate(t_f=factor(Track,levels = c("SEM","Custom","DI","Standard","Lighting","Total"))),
     aes(x=variable,y=1,label=value),size=3)+
+  theme_classic()+
   theme(text=element_text(size=8),
     axis.text.x = element_text(angle = 0, hjust = .5,size=6),
     axis.text.y = element_blank(),axis.ticks.y = element_blank(),
     axis.line.y = element_blank(),
     strip.text.y = element_text(angle = 180),
     strip.text.x = element_text(size = 10),
+    strip.background = element_rect(color = "gray",fill = "gray"),
     plot.margin = margin(-10,0,-10,0))+
-  scale_fill_gradient2(high = "red",low="green",mid = "yellow",midpoint = 50,na.value = "gray90",guide = FALSE)+
+  # scale_fill_gradient2(high = "red",low="green",mid = "yellow",midpoint = 50,na.value = "gray90",guide = FALSE)+
+  scale_fill_gradient2(low = "#edf8b1",mid ="#7fcdbb",high ="#2c7fb8",midpoint = 50,limit=c(0,100),na.value = "gray90",guide = FALSE)+
   scale_x_discrete(position = "top")+
   coord_fixed(ratio = 1)+
   labs(y=NULL,x=NULL,fill="% (by row)",title=NULL)+
@@ -432,16 +444,19 @@ freq_plot<-function(for_heat,size_count){
     fill=value*100),color="black")+
   scale_fill_gradient2(low = "white",mid ="#00ff00",high ="black",midpoint = 50,limit=c(0,100))+
   # geom_text(aes(x=variable,y=fuel_size,label=round(value*Freq,0)),size=2)+
-  geom_text(aes(x=fuel_size,
+  geom_text(aes(x=fuel_size,hjust=.5,
     y=factor(variable,levels = rev(c("SEM","Custom","DI","Standard","Lighting","Total"))),
-    label=format(round(value*Freq,0),big.mark=",")),size=2,color="black")+
+    label=format(round(value*Freq,0),big.mark=",",trim = TRUE)),size=2,color="black")+
    labs(title=NULL,y="Project Track",
     x="Site Size",fill="Percentage \n(of size group)")+
+  theme_classic()+
   theme(axis.text.x = element_text(angle = 0, hjust = .5,size = 5),
-    text = element_text(size=6),
+    text = element_text(size=8),
     axis.text.y=element_text(size=5),
     plot.title = element_text(size=6),
-    plot.margin=grid::unit(c(0,0,0,0), "mm"))+
+    plot.margin=unit(c(0,0,0,0), "mm"),
+    legend.key.size = unit(.15,"in"),
+    axis.line = element_line(size = .2))+
   coord_fixed(ratio=1)
 }
 
@@ -450,16 +465,18 @@ pene_plot<-function(data){
     geom_bar(aes(x=variable,y=value,fill=Group),stat = "identity",position = "fill")+
       labs(y="Percentage",x="Metric",title=NULL,fill="Participation \nStatus")+
       scale_fill_manual(
-        values = c("#99CC33","darkorange"),
+        values = c("#73b633","#005c9c"),
         breaks = c("Participants","Non-Participants"),
         labels = c("Participants","Non-Participants")
       )+
       scale_y_continuous(labels = scales::percent)+
+      theme_classic()+
       theme(
-        text = element_text(size=5),
+        text = element_text(size=7),
         axis.text = element_text(size=5),
         plot.title = element_text(size=6),
-        plot.margin = margin(-10,0,-10,-10))+
+        plot.margin = margin(2,0,-10,-10),
+        axis.line = element_line(size = .2))+
       coord_flip()
 }
 
@@ -473,13 +490,18 @@ map_plot<-function(data){
     # scale_fill_gradient2(mid="white",high="red",low="blue",midpoint = 0,limits=c(-3,3))+
     scale_fill_gradientn(colors = rev(c("#ff0000","#ff6666","white","#9ebbff","#004CFF")),limits=c(-10,10))+
     labs(fill="Savings % - \nUsage %",title=NULL)+
+    theme_classic()+
     theme(axis.title = element_blank(),
       axis.text = element_blank(),
       axis.ticks = element_blank(),
-      plot.margin = margin(-10,0,-10,-10),
+      plot.margin = margin(0,0,-10,-10),
+      legend.key.size = unit(.15,"in"),
       axis.line = element_blank(),
-    text = element_text(size=7),
-    plot.title = element_text(size=6))+
+      strip.background = element_rect(color = "gray",fill = "gray"),
+      text = element_text(size=9),
+      legend.title = element_text(size = 6),
+      legend.text = element_text(size = 6),
+      plot.title = element_text(size=6))+
     facet_grid(.~variable)
 }
 
@@ -608,11 +630,13 @@ map_metric<-bind_rows(mget(apropos("map_metrics")))
 
 Summary_Table<-left_join(overview_metric,pene_metric) %>% left_join(map_metric) %>% left_join(pie_metric)
 
-pie_plot(data = pie_dat_Grocery)
+pie_plot(data = pie_dat_Grocery,Size_Count = size_count_Grocery)
 
 comb_plot(CombFull = `CombFull_Higher Education`,TextFull = `TextFull_Higher Education`,Size_Count = `size_count_Higher Education`)
+comb_plot(CombFull = `CombFull_Office`,TextFull = `TextFull_Office`,Size_Count = `size_count_Office`)
 
 freq_plot(for_heat = for_heat_Hospitality,size_count = size_count_Hospitality)
+freq_plot(for_heat = for_heat_Office,size_count = size_count_Office)
 
 pene_plot(data=penetration_Religious)
 
