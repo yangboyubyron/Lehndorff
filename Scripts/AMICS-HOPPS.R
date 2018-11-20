@@ -24,11 +24,11 @@ HVAC_bins<-left_join(
 
 table(is.na(HVAC_bins$cdd_bin))
 
+HVAC_site<-subset(HVAC_bins,Site==3)
 
 load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
 
-HVAC_site<-subset(HVAC_bins,Site==3)
-Site_agg<-HVAC_site %>% group_by(cdd_bin,hour=hour(Date.Time)) %>% summarise(mean_kWh=mean(sumHVACWh/1000))
+Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)) %>% group_by(cdd_bin,hour=hour(Date.Time)) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
 
 ggplot(Site_agg)+
   geom_point(aes(x=hour,y=mean_kWh,color=as.factor(cdd_bin)))+
@@ -36,13 +36,38 @@ ggplot(Site_agg)+
 
 
 ggplot(amics_lm)+
+  geom_point(aes(x=as.numeric(hour),y=fit,color=substr(day_bin,1,1),group=1))+
+  labs(color="cdd")
+
+
+range(Site_agg$cdd_bin)==range(pred_pre$cdd_bin)
+
+HVAC_range<-Site_agg %>%
+  group_by(hour) %>%
+  summarise(
+    high_hvac=mean(mean_kWh[cdd_bin==max(cdd_bin)]),
+    low_hvac=mean(mean_kWh[cdd_bin==min(cdd_bin)]),
+    hvac_range=high_hvac-low_hvac,
+    hvac_pct=hvac_range/low_hvac)
+
+AMICS_range<-pred_pre %>%
+  group_by(hour=as.numeric(hour)) %>%
+  summarise(
+    high_amics=mean(fit[cdd_bin==max(cdd_bin)]),
+    low_amics=mean(fit[cdd_bin==min(cdd_bin)]),
+    amics_range=high_amics-low_amics,
+    amics_pct_range=amics_range/low_amics)
+
+ggplot(left_join(HVAC_range,AMICS_range,by="hour"))+
+  geom_line(aes(x=hour,y=hvac_range),color="blue")+
+  geom_line(aes(x=hour,y=amics_range),color="red")
+
+
+ggplot(amics_lm)+
   geom_point(aes(x=as.numeric(hour),y=fit,color=day_bin,group=1))+
   facet_grid(.~substr(day_bin,1,1))
 
-#
-ggplot(amics_lm)+
-  geom_point(aes(x=as.numeric(hour),y=fit,color=substr(day_bin,1,1),group=1))+
-  labs(color="cdd")
+
 
 low<-amics_lm %>% filter(substr(day_bin,1,1)<=0) %>% group_by(hour=as.numeric(hour)) %>% summarise(mean_fit=mean(fit))
 high<-amics_lm %>% filter(substr(day_bin,1,1)==4) %>% group_by(hour=as.numeric(hour)) %>% summarise(mean_fit=mean(fit))
@@ -53,9 +78,6 @@ ggplot()+
 
 ggplot(left_join(high,low,by="hour"))+
   geom_line(aes(x=hour,y=mean_fit.x-mean_fit.y))
-
-
-
 
 test<-subset(HVAC,Site=="3")
 
