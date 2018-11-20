@@ -1,8 +1,14 @@
 library(lubridate)
 
+load("/volumes//Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
+
 ggplot(amics_lm)+
   geom_point(aes(x=as.numeric(hour),y=fit,color=day_bin,group=1))+
   facet_grid(.~substr(day_bin,1,1))
+
+ggplot(amics_lm)+
+  geom_point(aes(x=as.numeric(hour),y=fit,color=substr(day_bin,1,1),group=1))+
+  labs(color="cdd")
 
 low<-amics_lm %>% filter(substr(day_bin,1,1)<=0) %>% group_by(hour=as.numeric(hour)) %>% summarise(mean_fit=mean(fit))
 high<-amics_lm %>% filter(substr(day_bin,1,1)==4) %>% group_by(hour=as.numeric(hour)) %>% summarise(mean_fit=mean(fit))
@@ -27,6 +33,10 @@ test$hour<-hour(test$Date.Time)
 testcdd<-left_join(test,cdd,by="date")
 
 testagg<-testcdd %>% group_by(cdd,hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000))
+
+ggplot(testagg %>% filter(cdd<=6))+
+  geom_point(aes(x=hour,y=mean_kWh,color=as.factor(cdd)))+
+  labs(color="cdd")
 
 low_hvac<-subset(testagg,cdd==0)
 high_hvac<-subset(testagg,cdd==4|cdd==4) %>% ungroup() %>% group_by(cdd=5,hour) %>% summarise(mean_kWh=mean(mean_kWh))
