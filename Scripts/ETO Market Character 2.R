@@ -194,7 +194,7 @@ ggplot(population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifamily/
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank(),axis.text.y = )+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Count of Customers",x="Business Sector",fill="Customer Size")
+  labs(y="Count of Sites",x="Business Sector",fill="Site Size")
 
 # ggsave("unadj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -303,7 +303,7 @@ ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
     strip.text.y = element_text(angle = 180,hjust = 1),
     axis.text.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Customer Size")
+  labs(y="Adjusted Count of Sites",x="Business Sector",fill="Site Size")
 
 # ggsave("adj_count.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -315,7 +315,7 @@ ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Proportion of Customers",x="Business Sector",fill="Customer Size / Participation")
+  labs(y="Proportion of Sites",x="Business Sector",fill="Site Size / Participation")
 
 # ggsave("adj_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -327,7 +327,7 @@ ggplot(counts_adj_track %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Proportion of Customers",x="Business Sector",fill="Program Track")
+  labs(y="Proportion of Sites",x="Business Sector",fill="Program Track")
 
 # ggsave("track_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -348,7 +348,7 @@ ggplot(counts_reg %>% filter(!is.na(Region)) %>% ungroup())+
   coord_flip(ylim = c(0,.25))+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(x="Region",y="Proportion of Customers",fill="Program Track")
+  labs(x="Region",y="Proportion of Sites",fill="Program Track")
   
 # ggsave("region_count_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -377,7 +377,7 @@ ggplot(counts_adj_part %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Customers",x="Business Sector",fill="Participation Status")
+  labs(y="Adjusted Count of Sites",x="Business Sector",fill="Participation Status")
 
 # ggsave("adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -417,7 +417,7 @@ ggplot(counts_adj_part_region %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Customers",x="Business Region",fill="Participation Status")
+  labs(y="Adjusted Count of Sites",x="Business Region",fill="Participation Status")
 
 # ggsave("adj_count_recent_region.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -455,7 +455,7 @@ ggplot(counts_adj_part_size %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Customers",x="Business Size",fill="Participation Status")
+  labs(y="Adjusted Count of Sites",x="Business Size",fill="Participation Status")
 
 # ggsave("adj_count_recent_size.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -571,7 +571,7 @@ ggplot(characterization_adj_kwh %>% filter(fuel_part!="Unknown Size Participant"
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Proportion of kWh Usage",x="Business Sector",fill="Customer Size")
+  labs(y="Proportion of kWh Usage",x="Business Sector",fill="Site Size")
 
 # ggsave("adj_kwh_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -661,7 +661,7 @@ ggplot(characterization_adj_therms %>% filter(fuel_part!="Unknown Size Participa
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Proportion of Therms Usage",x="Business Sector",fill="Customer Size")
+  labs(y="Proportion of Therms Usage",x="Business Sector",fill="Site Size")
 
 # ggsave("adj_therms_prop.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
