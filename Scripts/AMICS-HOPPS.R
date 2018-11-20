@@ -47,5 +47,9 @@ ggplot()+
 
 
 ggplot()+
-  geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=mean_kWh.y-mean_kWh.x),color="blue")+
-  geom_line(data=left_join(high,low,by="hour"),aes(x=hour,y=mean_fit.x-mean_fit.y),color="red")
+  geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)/mean_kWh.x*100),color="blue")+
+  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)/mean_fit.x*100),color="red")
+
+ggplot()+
+  geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)),color="blue")+
+  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")
