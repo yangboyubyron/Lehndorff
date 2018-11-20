@@ -1,11 +1,45 @@
 library(lubridate)
+library(ggplot2)
+library(dplyr)
 
-load("/volumes//Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
+day_bins<-readr::read_csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/hopps_daybins.csv")
+track <- read.csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Sample Data for Ted/Sample_Tracking.csv",stringsAsFactors = FALSE)
+track$said[track$zipcode==92618]<-6
+track$said[track$zipcode==92707]<-9
+HVAC<-read.csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_60min_2.csv",stringsAsFactors = FALSE)
+HVAC$date<-date(HVAC$Date.Time)
+
+# add day bins to HVAC data
+HVAC_station<-left_join(
+  HVAC,
+  track %>% select(said,stationid,stationid_alt),
+  by=c("Site"="said"))
+
+table(is.na(HVAC_station$Site),is.na(HVAC_station$stationid)&is.na(HVAC_station$stationid_alt))
+
+HVAC_bins<-left_join(
+  HVAC_station,
+  day_bins %>% select(stationid,date,cdd_bin,day_bin),
+  by=c("stationid","date"))
+
+table(is.na(HVAC_bins$cdd_bin))
+
+
+load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
+
+HVAC_site<-subset(HVAC_bins,Site==3)
+Site_agg<-HVAC_site %>% group_by(cdd_bin,hour=hour(Date.Time)) %>% summarise(mean_kWh=mean(sumHVACWh/1000))
+
+ggplot(Site_agg)+
+  geom_point(aes(x=hour,y=mean_kWh,color=as.factor(cdd_bin)))+
+  labs(color="cdd")
+
 
 ggplot(amics_lm)+
   geom_point(aes(x=as.numeric(hour),y=fit,color=day_bin,group=1))+
   facet_grid(.~substr(day_bin,1,1))
 
+#
 ggplot(amics_lm)+
   geom_point(aes(x=as.numeric(hour),y=fit,color=substr(day_bin,1,1),group=1))+
   labs(color="cdd")
@@ -21,7 +55,7 @@ ggplot(left_join(high,low,by="hour"))+
   geom_line(aes(x=hour,y=mean_fit.x-mean_fit.y))
 
 
-HVAC<-read.csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_60min.csv",stringsAsFactors = FALSE)
+
 
 test<-subset(HVAC,Site=="3")
 
@@ -34,6 +68,7 @@ testcdd<-left_join(test,cdd,by="date")
 
 testagg<-testcdd %>% group_by(cdd,hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000))
 
+#
 ggplot(testagg %>% filter(cdd<=6))+
   geom_point(aes(x=hour,y=mean_kWh,color=as.factor(cdd)))+
   labs(color="cdd")
@@ -48,8 +83,10 @@ ggplot()+
 
 ggplot()+
   geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)/mean_kWh.x*100),color="blue")+
-  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)/mean_fit.x*100),color="red")
+  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)/mean_fit.x*100),color="red")+
+  labs(y="% kWh",title="% diff cdd4 cdd0")
 
 ggplot()+
   geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)),color="blue")+
-  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")
+  geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")+
+  labs(y="kWh",title="kWh diff cdd4 cdd0")
