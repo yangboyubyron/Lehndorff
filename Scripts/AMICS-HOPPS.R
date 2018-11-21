@@ -41,9 +41,9 @@ HVAC_bins<-left_join(
 
 table(is.na(HVAC_bins$cdd_bin))
 
-HVAC_site<-subset(HVAC_bins,Site==2)
+HVAC_site<-subset(HVAC_bins,Site==3)
 
-load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id2.Rdata")
+load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
 
 Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)) %>% group_by(cdd_bin,hour=hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
 
