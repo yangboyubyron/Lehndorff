@@ -4,16 +4,33 @@ library(dplyr)
 
 day_bins<-readr::read_csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/hopps_daybins.csv")
 track <- read.csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Sample Data for Ted/Sample_Tracking.csv",stringsAsFactors = FALSE)
-track$said[track$zipcode==92618]<-6
-track$said[track$zipcode==92707]<-9
+# correspond sample and said
+track$sample_id<-0
+track$sample_id[track$said==1]<-1
+track$sample_id[track$said==2]<-2
+track$sample_id[track$said==3]<-3
+track$sample_id[track$said==4]<-4
+track$sample_id[track$said==5]<-5
+track$sample_id[track$said==7]<-6
+track$sample_id[track$said==8]<-7
+track$sample_id[track$said==434127]<-8
+track$sample_id[track$said==13497992]<-9
+track$sample_id[track$said==32748371]<-10
+table(track$sample_id)
+
 HVAC<-read.csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_60min_2.csv",stringsAsFactors = FALSE)
 HVAC$date<-date(HVAC$Date.Time)
+HVAC$hour<-hour(HVAC$Date.Time)
+# HVAC$hour[as.POSIXct(HVAC$Date.Time)<="2016-11-06 01:00:00"]<-HVAC$hour[as.POSIXct(HVAC$Date.Time)<="2016-11-06 01:00:00"]-1
+HVAC$hour<-HVAC$hour-1
+HVAC$date[HVAC$hour==-1]<-HVAC$date[HVAC$hour==-1]-1
+HVAC$hour[HVAC$hour==-1]<-23
 
 # add day bins to HVAC data
 HVAC_station<-left_join(
-  HVAC,
-  track %>% select(said,stationid,stationid_alt),
-  by=c("Site"="said"))
+  HVAC %>% filter(Date.Time!="2016-11-06 01:00:00"),
+  track %>% select(sample_id,stationid,stationid_alt),
+  by=c("Site"="sample_id"))
 
 table(is.na(HVAC_station$Site),is.na(HVAC_station$stationid)&is.na(HVAC_station$stationid_alt))
 
@@ -24,21 +41,11 @@ HVAC_bins<-left_join(
 
 table(is.na(HVAC_bins$cdd_bin))
 
-HVAC_site<-subset(HVAC_bins,Site==3)
+HVAC_site<-subset(HVAC_bins,Site==2)
 
-load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
+load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id2.Rdata")
 
-Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)) %>% group_by(cdd_bin,hour=hour(Date.Time)) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
-
-ggplot(Site_agg)+
-  geom_point(aes(x=hour,y=mean_kWh,color=as.factor(cdd_bin)))+
-  labs(color="cdd")
-
-
-ggplot(amics_lm)+
-  geom_point(aes(x=as.numeric(hour),y=fit,color=substr(day_bin,1,1),group=1))+
-  labs(color="cdd")
-
+Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)) %>% group_by(cdd_bin,hour=hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
 
 range(Site_agg$cdd_bin)==range(pred_pre$cdd_bin)
 
@@ -61,6 +68,8 @@ AMICS_range<-pred_pre %>%
 ggplot(left_join(HVAC_range,AMICS_range,by="hour"))+
   geom_line(aes(x=hour,y=hvac_range),color="blue")+
   geom_line(aes(x=hour,y=amics_range),color="red")
+
+
 
 
 ggplot(amics_lm)+
@@ -112,3 +121,5 @@ ggplot()+
   geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)),color="blue")+
   geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")+
   labs(y="kWh",title="kWh diff cdd4 cdd0")
+
+
