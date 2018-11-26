@@ -67,7 +67,9 @@ AMICS_range<-pred_pre %>%
 
 ggplot(left_join(HVAC_range,AMICS_range,by="hour"))+
   geom_line(aes(x=hour,y=hvac_range),color="blue")+
-  geom_line(aes(x=hour,y=amics_range),color="red")
+  geom_line(aes(x=hour,y=amics_range),color="red")+
+  labs(y=paste("difference between cdd ",range(Site_agg$cdd_bin)[1]," and cdd ",range(Site_agg$cdd_bin)[2],sep = ""),x="Hour",
+    title=paste("Site",unique(HVAC_site$Site)))
 
 
 
