@@ -1,6 +1,7 @@
 library(lubridate)
 library(ggplot2)
 library(dplyr)
+library(caTools)
 
 day_bins<-readr::read_csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/hopps_daybins.csv")
 track <- read.csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Sample Data for Ted/Sample_Tracking.csv",stringsAsFactors = FALSE)
@@ -36,21 +37,27 @@ table(is.na(HVAC_station$Site),is.na(HVAC_station$stationid)&is.na(HVAC_station$
 
 HVAC_bins<-left_join(
   HVAC_station,
-  day_bins %>% select(stationid,date,cdd_bin,day_bin),
+  day_bins %>% select(stationid,date,cdd_bin,weekend,day_bin),
   by=c("stationid","date"))
 
 table(is.na(HVAC_bins$cdd_bin))
 
-HVAC_site<-subset(HVAC_bins,Site==3)
-
+# for i in 1:7 (id)
 load("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id3.Rdata")
 
-Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)) %>% group_by(cdd_bin,hour=hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
+# HVAC_site<-subset(HVAC_bins,Site==8)
+HVAC_site<-subset(HVAC_bins,Site==unique(pred_pre$said))
+
+# clarify ami/pre-period overlap
+site_pre_start<-min(HVAC_site$date)
+site_pre_end<-max(HVAC_site$date[HVAC_site$sumHVACWh>10&HVAC_site$date<=max(pred_pre$date)])
+
+Site_agg<-HVAC_site %>% filter(date<=max(pred_pre$date)&date<site_pre_end) %>% group_by(cdd_bin,weekend,hour=hour) %>% summarise(mean_kWh=mean(sumHVACWh/1000/4))
 
 range(Site_agg$cdd_bin)==range(pred_pre$cdd_bin)
 
 HVAC_range<-Site_agg %>%
-  group_by(hour) %>%
+  group_by(weekend,hour) %>%
   summarise(
     high_hvac=mean(mean_kWh[cdd_bin==max(cdd_bin)]),
     low_hvac=mean(mean_kWh[cdd_bin==min(cdd_bin)]),
@@ -58,20 +65,71 @@ HVAC_range<-Site_agg %>%
     hvac_pct=hvac_range/low_hvac)
 
 AMICS_range<-pred_pre %>%
-  group_by(hour=as.numeric(hour)) %>%
+  filter(as.Date(date)<=site_pre_end&as.Date(date)>=site_pre_start) %>% 
+  group_by(weekend,hour=as.numeric(hour)) %>%
   summarise(
     high_amics=mean(fit[cdd_bin==max(cdd_bin)]),
     low_amics=mean(fit[cdd_bin==min(cdd_bin)]),
     amics_range=high_amics-low_amics,
     amics_pct_range=amics_range/low_amics)
 
-ggplot(left_join(HVAC_range,AMICS_range,by="hour"))+
+ggplot(left_join(HVAC_range,AMICS_range,by=c("weekend","hour")))+
   geom_line(aes(x=hour,y=hvac_range),color="blue")+
   geom_line(aes(x=hour,y=amics_range),color="red")+
   labs(y=paste("difference between cdd ",range(Site_agg$cdd_bin)[1]," and cdd ",range(Site_agg$cdd_bin)[2],sep = ""),x="Hour",
-    title=paste("Site",unique(HVAC_site$Site)))
+    title=paste("Site",unique(HVAC_site$Site)))+
+  facet_grid(.~weekend)
 
+full_data<-left_join(
+  pred_pre %>% filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>% mutate(date=as.Date(date),hour=as.numeric(hour)),
+  HVAC_site %>% filter(date<site_pre_end,date>site_pre_start) %>% mutate(hvac_est=sumHVACWh/1000/4),
+  by=c("date","hour")
+  )
 
+ggplot(full_data)+
+  geom_line(aes(x=readdate,y=fit),color="blue")+
+  geom_line(aes(x=readdate,y=hvac_est),color="red")+
+  geom_line(aes(x=readdate,y=fit-hvac_est),color="purple")+
+  coord_cartesian(xlim = c(as.POSIXct("2016-07-01"),as.POSIXct("2016-07-15")))+
+  labs(title="actuals (two weeks), imputed non-HVAC")
+
+ggplot(full_data)+
+  geom_line(aes(x=readdate,y=runmean(fit,k=4*24*1,align = "right",endrule = "NA")),color="blue")+
+  geom_line(aes(x=readdate,y=runmean(hvac_est,k=4*24*1,align = "right",endrule = "NA")),color="red")+
+  geom_line(aes(x=readdate,y=runmean((fit-hvac_est),k=4*24*1,align = "right",endrule = "NA")),color="purple")+
+  labs(title="one-day MA, imputed non-HVAC")
+
+# calculate one-week MA
+full_data$fit_av<-runmean(full_data$fit,k=4*24*7,align = "right",endrule = "NA")
+full_data$fit_hvac<-runmean(full_data$hvac_est,k=4*24*7,align = "right",endrule = "NA")
+full_data$fit_diff<-runmean(full_data$fit-full_data$hvac_est,k=4*24*7,align = "right",endrule = "NA")
+
+ggplot(full_data)+
+  geom_line(aes(x=readdate,y=fit_av),color="blue")+
+  geom_line(aes(x=readdate,y=fit_hvac),color="red")+
+  geom_line(aes(x=readdate,y=fit_diff),color="purple")+
+  labs(title="one-week MA, imputed non-HVAC")
+
+ggplot(full_data)+
+  geom_line(aes(x=readdate,y=fit_av/max(full_data$fit_av,na.rm = TRUE)),color="blue")+
+  geom_line(aes(x=readdate,y=fit_hvac/max(full_data$fit_hvac,na.rm = TRUE)),color="red")+
+  geom_line(aes(x=readdate,y=fit_diff/max(full_data$fit_diff,na.rm = TRUE)),color="purple")+
+  labs(title="one-week MA % of max")
+
+ggplot(full_data)+
+  geom_line(aes(x=readdate,y=lag(fit_av)-fit_av),color="blue")+
+  geom_line(aes(x=readdate,y=lag(fit_hvac)-fit_hvac),color="red")+
+  geom_line(aes(x=readdate,y=lag(fit_diff)-fit_diff),color="purple")+
+  coord_cartesian(xlim = c(as.POSIXct("2016-07-01"),as.POSIXct("2016-07-15")))+
+  labs()
+
+cor(full_data$fit,full_data$fit-full_data$hvac_est)
+cor(full_data$fit,full_data$hvac_est)
+cor(full_data$fit_av,full_data$fit_diff,use = "complete.obs")
+cor(full_data$fit_av,full_data$fit_hvac,use = "complete.obs")
+cor(lag(full_data$fit_av)-full_data$fit_av,lag(full_data$fit_diff)-full_data$fit_diff,use = "complete.obs")
+cor(lag(full_data$fit_av)-full_data$fit_av,lag(full_data$fit_hvac)-full_data$fit_hvac,use = "complete.obs")
+table(full_data$hvac_est>full_data$fit)
 
 
 ggplot(amics_lm)+
