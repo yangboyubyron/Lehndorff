@@ -111,10 +111,8 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(aes(x=readdate,y=fit),color="red")+
   geom_line(aes(x=readdate,y=hvac_est),color="blue")+
   geom_line(alpha=.3,aes(x=readdate,y=fit-hvac_est),color="purple")+
-<<<<<<< HEAD
   # geom_line(alpha=.3,aes(x=readdate,y=kwh-hvac_est),color="orange")+
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
->>>>>>> 6314e80d4d00e82b59227f10f413a9fe9667d2c8
   labs(title="actuals (one week), imputed non-HVAC",y="kW",x="Date")
 
 ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/2. Hourly Comp Snapshot.jpg"))
@@ -151,9 +149,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(aes(x=readdate,y=fit_av-lag(fit_av)),color="red")+
   geom_line(aes(x=readdate,y=fit_hvac-lag(fit_hvac)),color="blue")+
   geom_line(alpha=.3,aes(x=readdate,y=fit_diff-lag(fit_diff)),color="purple")+
-<<<<<<< HEAD
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
->>>>>>> 6314e80d4d00e82b59227f10f413a9fe9667d2c8
   labs(title="one-week MA rate of change",y="kW",x="Date")
 
 ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/5. Rate of Change Weekly moving average.jpg"))
@@ -163,9 +159,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(aes(x=readdate,y=fit-lag(fit)),color="red")+
   geom_line(aes(x=readdate,y=hvac_est-lag(hvac_est)),color="blue")+
   geom_line(alpha=.3,aes(x=readdate,y=(fit-hvac_est)-lag(fit-hvac_est)),color="purple")+
-<<<<<<< HEAD
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
->>>>>>> 6314e80d4d00e82b59227f10f413a9fe9667d2c8
   labs(title="actuals rate of change",y="kW",x="Date")
   
 ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/6. Rate of Change actuals.jpg"))
