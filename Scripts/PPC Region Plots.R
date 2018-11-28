@@ -25,7 +25,7 @@ n_distinct(OHCS_map$subregion[!is.na(OHCS_map$Number.of.Projects)])
 ggplot(OHCS_map)+
   coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
   geom_polygon(data = OHCS_map, aes(x = long, y = lat,group=group,fill = Number.of.Projects), color = "black", size = .3)+
-  scale_fill_gradient(low = "white",high="#AB6E29",na.value = "gray80")+
+  scale_fill_gradient2(low = "#f5e6d6",high="#AB6E29",na.value = "white")+
   labs(fill="Number of \nProjects",title=NULL)+
   theme_classic()+
   theme(axis.title = element_blank(),
@@ -51,7 +51,7 @@ n_distinct(ETO_map$subregion[!is.na(ETO_map$Total)])
 ggplot(ETO_map)+
   coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
   geom_polygon(data = ETO_map, aes(x = long, y = lat,group=group,fill = Total), color = "black", size = .3)+
-  scale_fill_gradient(low = "white",high="#00A4BE",na.value = "gray80")+
+  scale_fill_gradient(low = "#e0fbff",high="#00A4BE",na.value = "white")+
   labs(fill="Total",title=NULL)+
   theme_classic()+
   theme(axis.title = element_blank(),
@@ -77,8 +77,8 @@ n_distinct(schools_map$subregion[!is.na(schools_map$Count.of.Installed.Measures)
 ggplot(schools_map)+
   coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
   geom_polygon(data = schools_map, aes(x = long, y = lat,group=group,fill = Count.of.Installed.Measures), color = "black", size = .3)+
-  scale_fill_gradient(low = "white",high="#042A4C",na.value = "gray80")+
-  labs(fill="Count of \n Installed Measures",title=NULL)+
+  scale_fill_gradient(low = "#cfe7fc",high="#042A4C",na.value = "white")+
+  labs(fill="Count of \nInstalled Measures",title=NULL)+
   theme_classic()+
   theme(axis.title = element_blank(),
     axis.text = element_blank(),
@@ -103,7 +103,7 @@ n_distinct(SDI_map$subregion[!is.na(SDI_map$Sites)])
 ggplot(SDI_map)+
   coord_quickmap(xlim = c(-124.6, -116.4), ylim = c(42, 46.3)) +
   geom_polygon(data = SDI_map, aes(x = long, y = lat,group=group,fill = Sites), color = "black", size = .3)+
-  scale_fill_gradient(low = "white",high="#4A7729",na.value = "gray80")+
+  scale_fill_gradient(low = "#deefd1",high="#4A7729",na.value = "white")+
   labs(fill="Sites",title=NULL)+
   theme_classic()+
   theme(axis.title = element_blank(),
