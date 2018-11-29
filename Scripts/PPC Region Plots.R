@@ -31,11 +31,11 @@ ggplot(OHCS_map)+
   theme(axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
-    legend.key.size = unit(.15,"in"),
+    legend.key.size = unit(.25,"in"),
     axis.line = element_blank(),
     text = element_text(size=9),
-    legend.title = element_text(size = 6),
-    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7),
     plot.title = element_text(size=6))
 
 # ggsave("~/desktop/PPC Plots/OHCS.jpg",device = "jpeg",width = 6, height = 6)
@@ -57,11 +57,11 @@ ggplot(ETO_map)+
   theme(axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
-    legend.key.size = unit(.15,"in"),
+    legend.key.size = unit(.25,"in"),
     axis.line = element_blank(),
     text = element_text(size=9),
-    legend.title = element_text(size = 6),
-    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7),
     plot.title = element_text(size=6))
 
 # ggsave("~/desktop/PPC Plots/ETO.jpg",device = "jpeg",width = 6, height = 6)
@@ -83,11 +83,11 @@ ggplot(schools_map)+
   theme(axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
-    legend.key.size = unit(.15,"in"),
+    legend.key.size = unit(.25,"in"),
     axis.line = element_blank(),
     text = element_text(size=9),
-    legend.title = element_text(size = 6),
-    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7),
     plot.title = element_text(size=6))
 
 # ggsave("~/desktop/PPC Plots/Schools.jpg",device = "jpeg",width = 6, height = 6)
@@ -109,11 +109,11 @@ ggplot(SDI_map)+
   theme(axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
-    legend.key.size = unit(.15,"in"),
+    legend.key.size = unit(.25,"in"),
     axis.line = element_blank(),
     text = element_text(size=9),
-    legend.title = element_text(size = 6),
-    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7),
     plot.title = element_text(size=6))
 
 # ggsave("~/desktop/PPC Plots/SDI.jpg",device = "jpeg",width = 6, height = 6)
