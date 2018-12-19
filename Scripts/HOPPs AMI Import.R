@@ -15,7 +15,9 @@ for (i in 1:length(subfolders)){
 # read whole building data
 wholebuild<-read.csv("/volumes/Projects/401027 - AMI Phase II/Data - CONFIDENTIAL/SCE Data/Data Delivery 010218/adhq1041/adhq1041_2_intrvl_201604.csv")
 wholebuild$loc<-gsub("RFF|OFS|_| ","",wholebuild$Site_Description)
-wholebuild$formdate<-as.character(strptime(wholebuild$Interval_Start_Dttm,format = "%d%b%Y:%H:%M:%S"))
+wholebuild$formdate<-strptime(wholebuild$Interval_Start_Dttm,format = "%d%b%Y:%H:%M:%S")
+wholebuild$formdate2<-strptime(wholebuild$Interval_Start_Clock_Dttm,format = "%d%b%Y:%H:%M:%S")
+wholebuild$diff<-wholebuild$formdate-wholebuild$formdate2
 
 MinutesTWO<-c(apropos("2.min"),apropos("2min"))
 MinutesFIF<-apropos("15")
@@ -148,13 +150,32 @@ Data60out$Site[Data60out$Site=="Covina"]<-3
 Data60out$Site[Data60out$Site=="Huntington"]<-1
 Data60out$Site[Data60out$Site=="Irvine"]<-6
 Data60out$Site[Data60out$Site=="LakeForest(1)"]<-8
-Data60out$Site[Data60out$Site=="LakeForets(2)"]<-9
+Data60out$Site[Data60out$Site=="LakeForest(2)"]<-9
 Data60out$Site[Data60out$Site=="Placentia"]<-2
 Data60out$Site[Data60out$Site=="SantaAna"]<-4
 Data60out$Site[Data60out$Site=="SignalHill"]<-7
 Data60out$Site[Data60out$Site=="Torrance"]<-5
 
+table(Data60out$Site)
+
+# write.csv(Data60out,"/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_60min_2.csv",row.names = FALSE)
+
 # Data15out
+Data15out<-Data15%>%filter(equip!="TotalSystem")%>%group_by(Site=loc,Date.Time)%>%summarise(sumHVACWh=sum(value))
+Data15out$Site[Data15out$Site=="Covina"]<-3
+Data15out$Site[Data15out$Site=="Huntington"]<-1
+Data15out$Site[Data15out$Site=="Irvine"]<-6
+Data15out$Site[Data15out$Site=="LakeForest(1)"]<-8
+Data15out$Site[Data15out$Site=="LakeForest(2)"]<-9
+Data15out$Site[Data15out$Site=="Placentia"]<-2
+Data15out$Site[Data15out$Site=="SantaAna"]<-4
+Data15out$Site[Data15out$Site=="SignalHill"]<-7
+Data15out$Site[Data15out$Site=="Torrance"]<-5
+
+table(Data15out$Site)
+
+# write.csv(Data15out,"/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_15min.csv",row.names = FALSE)
+
+
 # Data02out
 
-# write.csv(Data60out,"/volumes/Projects/419XXX - SCE HOPPs AMI/Data/SumHVAC_60min.csv",row.names = FALSE)
