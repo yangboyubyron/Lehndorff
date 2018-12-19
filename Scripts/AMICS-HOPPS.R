@@ -64,11 +64,11 @@ full_data<-left_join(
   by=c("date","hour")
   )
 
-ws_bin<-full_data %>% 
-  filter(cdd_bin.x==max(cdd_bin.x)|cdd_bin.x==min(cdd_bin.x)) %>% 
-  group_by(cdd_bin.x,weekend.x,hour) %>% 
-  summarise(mean_amics=mean(fit,na.rm = TRUE),mean_hvac=mean(hvac_est,na.rm = TRUE)) %>% 
-  group_by(hour,weekend.x) %>% 
+ws_bin<-full_data %>%
+  filter(cdd_bin.x==max(cdd_bin.x)|cdd_bin.x==min(cdd_bin.x)) %>%
+  group_by(cdd_bin.x,weekend.x,hour) %>%
+  summarise(mean_amics=mean(fit,na.rm = TRUE),mean_hvac=mean(hvac_est,na.rm = TRUE)) %>%
+  group_by(hour,weekend.x) %>%
   summarise(
     amics_diff=mean_amics[cdd_bin.x==max(cdd_bin.x)]-mean_amics[cdd_bin.x==min(cdd_bin.x)],
     hvac_diff=mean_hvac[cdd_bin.x==max(cdd_bin.x)]-mean_hvac[cdd_bin.x==min(cdd_bin.x)])
@@ -81,23 +81,26 @@ ggplot(ws_bin)+
     title=paste("Site",unique(HVAC_site$Site),"Weekday/Weekend"))+
   facet_grid(.~weekend.x)
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/1a. Weather Sensitivity (bin) by Hour.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/1a. Weather Sensitivity (bin) by Hour.jpg"))
 
-ws<-full_data %>% 
-  group_by(weekend.x) %>% 
-  mutate(high_cdd=cdd>=max(cdd)-2,low_cdd=cdd<=min(cdd)+2) %>% 
-  filter(high_cdd|low_cdd) %>% 
-  group_by(high_cdd,weekend.x,hour) %>% 
-  summarise(mean_amics=mean(fit,na.rm = TRUE),mean_hvac=mean(hvac_est,na.rm = TRUE)) %>%
-  group_by(hour,weekend.x) %>% 
+ws<-full_data %>%
+  group_by(weekend.x) %>%
+  mutate(high_cdd=cdd>=max(cdd)-2,low_cdd=cdd<=min(cdd)+2) %>%
+  filter(high_cdd|low_cdd) %>%
+  group_by(high_cdd,weekend.x,hour) %>%
+  summarise(mean_amics=mean(fit,na.rm = TRUE),mean_hvac=mean(hvac_est,na.rm = TRUE),mean_ami=mean(kwh,na.rm = TRUE)) %>%
+  group_by(hour,weekend.x) %>%
   summarise(
     amics_diff=mean_amics[high_cdd]-mean_amics[!high_cdd],
-    hvac_diff=mean_hvac[high_cdd]-mean_hvac[!high_cdd])
+    hvac_diff=mean_hvac[high_cdd]-mean_hvac[!high_cdd],
+    ami_diff=mean_ami[high_cdd]-mean_ami[!high_cdd])
 
 ggplot(ws)+
+  geom_line(aes(x=hour,y=ami_diff),color="gray50")+
   geom_line(aes(x=hour,y=amics_diff),color="red")+
   geom_line(aes(x=hour,y=hvac_diff),color="blue")+
-  geom_line(aes(x=hour,y=amics_diff-hvac_diff),color="purple",alpha=.3)+
+  geom_line(aes(x=hour,y=amics_diff-hvac_diff),color="purple",alpha=.3,size=.5)+
+  geom_line(aes(x=hour,y=ami_diff-hvac_diff),color="green",alpha=.3,size=.5)+
   labs(y=paste("difference between two highest cdd and two lowest cdd"),x="Hour",
     title=paste("Site",unique(HVAC_site$Site),"Weekday/Weekend"))+
   facet_grid(.~weekend.x)
@@ -107,7 +110,7 @@ ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/1b. Weather Sensitivit
 
 
 ggplot(full_data %>% filter(minute(readdate)==0))+
-  # geom_line(aes(x=readdate,y=kwh),color="black")+
+  geom_line(aes(x=readdate,y=kwh),color="black")+
   geom_line(aes(x=readdate,y=fit),color="red")+
   geom_line(aes(x=readdate,y=hvac_est),color="blue")+
   geom_line(alpha=.3,aes(x=readdate,y=fit-hvac_est),color="purple")+
@@ -115,7 +118,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
   labs(title="actuals (one week), imputed non-HVAC",y="kW",x="Date")
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/2. Hourly Comp Snapshot.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/2. Hourly Comp Snapshot.jpg"))
 
 ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(aes(x=readdate,y=runmean(fit,k=4*24*1,align = "right",endrule = "NA")),color="red")+
@@ -123,7 +126,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(alpha=.3,aes(x=readdate,y=runmean((fit-hvac_est),k=4*24*1,align = "right",endrule = "NA")),color="purple")+
   labs(title="one-day MA, imputed non-HVAC",y="kW",x="Date")
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/3. Daily moving average.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/3. Daily moving average.jpg"))
 
 # calculate one-week MA
 full_data$fit_av<-runmean(full_data$fit,k=4*24*7,align = "right",endrule = "NA")
@@ -136,7 +139,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(alpha=.3,aes(x=readdate,y=fit_diff),color="purple")+
   labs(title="one-week MA, imputed non-HVAC",y="kW",x="Date")
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/4. Weekly moving average.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/4. Weekly moving average.jpg"))
 
 
 # ggplot(full_data)+
@@ -152,7 +155,7 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
   labs(title="one-week MA rate of change",y="kW",x="Date")
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/5. Rate of Change Weekly moving average.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/5. Rate of Change Weekly moving average.jpg"))
 
 
 ggplot(full_data %>% filter(minute(readdate)==0))+
@@ -161,12 +164,12 @@ ggplot(full_data %>% filter(minute(readdate)==0))+
   geom_line(alpha=.3,aes(x=readdate,y=(fit-hvac_est)-lag(fit-hvac_est)),color="purple")+
   coord_cartesian(xlim = c(as.POSIXct("2016-06-15"),as.POSIXct("2016-06-22")))+
   labs(title="actuals rate of change",y="kW",x="Date")
-  
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/6. Rate of Change actuals.jpg"))
 
-cdd_hour_agg<-full_data %>% 
-  filter(minute(readdate)==0) %>% 
-  group_by(cdd_bin.x,hour,weekend.x) %>% 
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/6. Rate of Change actuals.jpg"))
+
+cdd_hour_agg<-full_data %>%
+  filter(minute(readdate)==0) %>%
+  group_by(cdd_bin.x,hour,weekend.x) %>%
   summarise(avg_non_HVAC=mean(fit-hvac_est,na.rm = TRUE))
 
 ggplot(cdd_hour_agg)+
@@ -175,7 +178,7 @@ ggplot(cdd_hour_agg)+
   scale_color_manual(values=c("purple","navy"))+
   labs(title="Imputed non-HVAC by CDD",x="Hour",color="Weekend")
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/7. Imputed non-HVAC by CDD.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/7. Imputed non-HVAC by CDD.jpg"))
 
 }
 
