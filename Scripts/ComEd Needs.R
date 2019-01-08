@@ -57,19 +57,45 @@ use_agg$am_ratio<-use_agg$avg/use_agg$min
 use_agg$sw_ratio<-use_agg$S_JJA/use_agg$W_DJF
 summary(use_agg)
 
+usable<-use_agg %>% filter((min>0|avg>0)&!is.na(S_JJA)&!is.na(W_DJF))
+quantile(usable$sa_ratio,probs = c(.1,.25,.5,.75,.9),na.rm = TRUE)
 
-table(round(use_agg$ss_ratio))
+usable$avg_group<-"NOT DEFINED"
+usable$avg_group[is.na(usable$avg)]<-"Unknown"
+usable$avg_group[usable$avg>=1000&usable$avg_group=="NOT DEFINED"]<-"High"
+usable$avg_group[usable$avg<1000&usable$avg>=500&usable$avg_group=="NOT DEFINED"]<-"Medium"
+usable$avg_group[usable$avg<500&usable$avg_group=="NOT DEFINED"]<-"Low"
+table(usable$avg_group)
 
-use_agg2<-use_agg %>%
-  group_by(ID) %>% 
-  mutate(
-    min=min(c(M01,M02,M03,M04,M05,M06,M07,M08,M09,M10,M11,M12),na.rm = TRUE),
-    s_JJA=mean(c(M06,M07,M08),na.rm = TRUE),
-    w_DJF=mean(c(M12,M01,M02),na.rm=TRUE))
+usable$summer_group<-"NOT DEFINED"
+usable$summer_group[is.na(usable$sa_ratio)]<-"Unknown"
+usable$summer_group[usable$sa_ratio>1.1&usable$summer_group=="NOT DEFINED"]<-"Up"
+usable$summer_group[usable$sa_ratio<=1.1&usable$sa_ratio>.9&usable$summer_group=="NOT DEFINED"]<-"Flat"
+usable$summer_group[usable$sa_ratio<=.9&usable$summer_group=="NOT DEFINED"]<-"Down"
+table(usable$summer_group)
 
+usable$winter_group<-"NOT DEFINED"
+usable$winter_group[is.na(usable$wa_ratio)]<-"Unknown"
+usable$winter_group[usable$wa_ratio>1.1&usable$winter_group=="NOT DEFINED"]<-"Up"
+usable$winter_group[usable$wa_ratio<=1.1&usable$wa_ratio>.9&usable$winter_group=="NOT DEFINED"]<-"Flat"
+usable$winter_group[usable$wa_ratio<=.9&usable$winter_group=="NOT DEFINED"]<-"Down"
+table(usable$winter_group)
 
+test<-usable %>% group_by(avg_group,summer_group,winter_group) %>% summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),avg=mean(avg),summer=mean(S_JJA),winter=mean(W_DJF),group=unique(paste(avg_group,summer_group,winter_group))) %>% arrange(-n)
+test2<-usable %>% group_by(avg_group,summer_group,winter_group) %>% mutate(rand=rank(runif(n())),group=paste(avg_group,summer_group,winter_group))
 
+for(i in unique(test$group)){
+  print(i)
+  plot_dat<-test2 %>% ungroup %>% filter(group==i&rand<6) %>% select(ID,contains("M",ignore.case = FALSE),avg) %>% reshape2::melt(.,id.vars="ID")
+  plot<-ggplot(plot_dat %>% filter(variable!="avg"))+
+    geom_hline(data = plot_dat %>% filter(variable=="avg"),aes(yintercept=value))+
+    geom_line(aes(x=as.Date(paste("2018",as.numeric(substr(variable,2,3)),"01",sep="-")),y=value),color="blue")+
+    labs(x="Month",y="kWh",title=paste(i,test$n[test$group==i]))+
+    facet_grid(ID~.,scales = "free")
+  ggsave(plot,filename = paste0("~/desktop/ComEd Plots/",i,".jpg"),width = 7, height = 5)
+}
 
+usable$avg_group
 agg_2016<-use_2016 %>% 
   group_by(ID) %>% 
   summarise(
