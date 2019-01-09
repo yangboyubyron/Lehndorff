@@ -3,6 +3,7 @@ library(dplyr)
 library(pROC)
 library(xlsx)
 library(lubridate)
+library(ggplot2)
 options(scipen = 999)
 
 # Load customer/usage data
@@ -45,72 +46,115 @@ table(is.na(use_agg))
 
 use_agg$min<-apply(use_agg %>% select(-ID),1,FUN=min,na.rm=TRUE)
 use_agg$avg<-apply(use_agg %>% select(-ID,-min),1,FUN=mean)
-use_agg$S_JJA<-apply(use_agg %>% select(M06,M07,M08),1,FUN=mean)
+use_agg$S_JA<-apply(use_agg %>% select(M07,M08),1,FUN=mean)
 use_agg$W_DJF<-apply(use_agg %>% select(M12,M01,M02),1,FUN=mean)
+use_agg$Shoulder<-apply(use_agg %>% select(M03,M04,M05,M10,M11),1,FUN=mean)
 
 # metrics
-use_agg$sm_ratio<-use_agg$S_JJA/use_agg$min
-use_agg$wm_ratio<-use_agg$W_DJF/use_agg$min
-use_agg$sa_ratio<-use_agg$S_JJA/use_agg$avg
-use_agg$wa_ratio<-use_agg$W_DJF/use_agg$avg
-use_agg$am_ratio<-use_agg$avg/use_agg$min
-use_agg$sw_ratio<-use_agg$S_JJA/use_agg$W_DJF
+# use_agg$sm_ratio<-use_agg$S_JJA/use_agg$min
+# use_agg$wm_ratio<-use_agg$W_DJF/use_agg$min
+# use_agg$sa_ratio<-use_agg$S_JJA/use_agg$avg
+# use_agg$wa_ratio<-use_agg$W_DJF/use_agg$avg
+# use_agg$am_ratio<-use_agg$avg/use_agg$min
+use_agg$ss_ratio<-use_agg$S_JA/use_agg$Shoulder
+use_agg$ws_ratio<-use_agg$W_DJF/use_agg$Shoulder
+use_agg$sw_ratio<-use_agg$S_JA/use_agg$W_DJF
 summary(use_agg)
 
-usable<-use_agg %>% filter((min>0|avg>0)&!is.na(S_JJA)&!is.na(W_DJF))
-quantile(usable$sa_ratio,probs = c(.1,.25,.5,.75,.9),na.rm = TRUE)
+usable<-use_agg %>% filter((min>0|Shoulder>0)&!is.na(avg)&!is.na(S_JA)&!is.na(W_DJF))
+quantile(usable$ws_ratio,probs = c(.1,.25,.5,.75,.9),na.rm = TRUE)
 
-usable$avg_group<-"NOT DEFINED"
-usable$avg_group[is.na(usable$avg)]<-"Unknown"
-usable$avg_group[usable$avg>=1000&usable$avg_group=="NOT DEFINED"]<-"High"
-usable$avg_group[usable$avg<1000&usable$avg>=500&usable$avg_group=="NOT DEFINED"]<-"Medium"
-usable$avg_group[usable$avg<500&usable$avg_group=="NOT DEFINED"]<-"Low"
-table(usable$avg_group)
+hist(usable$ss_ratio[usable$ss_ratio<quantile(usable$ss_ratio,probs = .99)],breaks = 100)
 
 usable$summer_group<-"NOT DEFINED"
-usable$summer_group[is.na(usable$sa_ratio)]<-"Unknown"
-usable$summer_group[usable$sa_ratio>1.1&usable$summer_group=="NOT DEFINED"]<-"Up"
-usable$summer_group[usable$sa_ratio<=1.1&usable$sa_ratio>.9&usable$summer_group=="NOT DEFINED"]<-"Flat"
-usable$summer_group[usable$sa_ratio<=.9&usable$summer_group=="NOT DEFINED"]<-"Down"
-table(usable$summer_group)
+usable$summer_group[usable$ss_ratio>=1.4&usable$summer_group=="NOT DEFINED"]<-"Up"
+usable$summer_group[usable$ss_ratio<1.4&usable$ss_ratio>=.9&usable$summer_group=="NOT DEFINED"]<-"Flat"
+usable$summer_group[usable$ss_ratio<.9&usable$summer_group=="NOT DEFINED"]<-"Down"
+table(usable$summer_group)/nrow(usable)
+
+# https://www.eia.gov/consumption/residential/data/2015/hc/php/hc6.7.php
+
+hist(usable$ws_ratio[usable$ws_ratio<quantile(usable$ws_ratio,probs = .99)],breaks = 100)
 
 usable$winter_group<-"NOT DEFINED"
-usable$winter_group[is.na(usable$wa_ratio)]<-"Unknown"
-usable$winter_group[usable$wa_ratio>1.1&usable$winter_group=="NOT DEFINED"]<-"Up"
-usable$winter_group[usable$wa_ratio<=1.1&usable$wa_ratio>.9&usable$winter_group=="NOT DEFINED"]<-"Flat"
-usable$winter_group[usable$wa_ratio<=.9&usable$winter_group=="NOT DEFINED"]<-"Down"
-table(usable$winter_group)
+usable$winter_group[usable$ws_ratio>=1.4&usable$winter_group=="NOT DEFINED"]<-"Up"
+usable$winter_group[usable$ws_ratio<1.4&usable$ws_ratio>=.9&usable$winter_group=="NOT DEFINED"]<-"Flat"
+usable$winter_group[usable$ws_ratio<.9&usable$winter_group=="NOT DEFINED"]<-"Down"
+table(usable$winter_group)/nrow(usable)
 
-test<-usable %>% group_by(avg_group,summer_group,winter_group) %>% summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),avg=mean(avg),summer=mean(S_JJA),winter=mean(W_DJF),group=unique(paste(avg_group,summer_group,winter_group))) %>% arrange(-n)
-test2<-usable %>% group_by(avg_group,summer_group,winter_group) %>% mutate(rand=rank(runif(n())),group=paste(avg_group,summer_group,winter_group))
+# usage groups
+hist(usable$S_JA[usable$S_JA<quantile(usable$S_JA,probs = .99)],breaks=100)
+quantile(usable$S_JA,probs = seq(0,1,.05))
+usable$s_group<-ifelse(usable$S_JA>=1500,TRUE,FALSE)
+table(usable$s_group)
+
+hist(usable$W_DJF[usable$W_DJF<quantile(usable$W_DJF,probs = .99)],breaks=100)
+quantile(usable$W_DJF,probs = seq(0,1,.05))
+usable$w_group<-ifelse(usable$W_DJF>=1300,TRUE,FALSE)
+table(usable$w_group)
+
+hist(usable$Shoulder[usable$Shoulder<quantile(usable$Shoulder,probs = .99)],breaks=100)
+quantile(usable$Shoulder,probs = seq(0,1,.05))
+usable$sh_group<-ifelse(usable$Shoulder>=1000,TRUE,FALSE)
+table(usable$sh_group)
+
+hist(usable$avg[usable$avg<quantile(usable$avg,probs = .99)],breaks=100)
+quantile(usable$avg,probs = seq(0,1,.05))
+usable$avg_group<-ifelse(usable$avg>=1100,TRUE,FALSE)
+table(usable$avg_group)
+
+use_cross<-usable %>% group_by(s_group,w_group,sh_group,avg_group) %>% summarise(n=n(),m_s=mean(S_JA),m_w=mean(W_DJF),m_sh=mean(Shoulder),m_avg=mean(avg))
+
+usable$high_use<-apply(usable %>% select(s_group,w_group,sh_group,avg_group),1,FUN=max)
+table(usable$high_use)
+
+test<-usable %>% 
+  group_by(high_use,summer_group,winter_group) %>% 
+  summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),Shoulder=mean(Shoulder),summer=mean(S_JA),winter=mean(W_DJF),group=unique(paste(high_use,summer_group,winter_group))) %>%
+  group_by(high_use) %>% 
+  mutate(p_use=n/sum(n)) %>% 
+  arrange(-n)
+
+test2<-usable %>% group_by(high_use,summer_group,winter_group) %>% mutate(rand=rank(runif(n())),group=paste(high_use,summer_group,winter_group))
+
+usable$e_cool<-"NOT DEFINED"
+usable$e_cool[usable$summer_group=="Up"]<-"CAC"
+usable$e_cool[usable$summer_group=="Flat"]<-"Window Unit"
+usable$e_cool[usable$summer_group=="Down"]<-"None"
+table(usable$e_cool)
+
+usable$e_heat<-ifelse(usable$winter_group=="Up","Elec Heat","Gas Heat")
+
+test<-usable %>% 
+  group_by(high_use,e_cool,e_heat) %>% 
+  summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),avg=mean(avg),Shoulder=mean(Shoulder),summer=mean(S_JA),winter=mean(W_DJF),group=unique(paste(high_use,e_cool,e_heat))) %>%
+  group_by(high_use) %>% 
+  mutate(p_use=n/sum(n)) %>% 
+  arrange(-n)
+
+test2<-usable %>% group_by(high_use,e_cool,e_heat) %>% mutate(rand=rank(runif(n())),group=paste(high_use,e_cool,e_heat))
 
 for(i in unique(test$group)){
   print(i)
-  plot_dat<-test2 %>% ungroup %>% filter(group==i&rand<6) %>% select(ID,contains("M",ignore.case = FALSE),avg) %>% reshape2::melt(.,id.vars="ID")
-  plot<-ggplot(plot_dat %>% filter(variable!="avg"))+
-    geom_hline(data = plot_dat %>% filter(variable=="avg"),aes(yintercept=value))+
+  plot_dat<-test2 %>% ungroup %>% filter(group==i&rand<9) %>% select(ID,contains("M",ignore.case = FALSE),Shoulder) %>% reshape2::melt(.,id.vars="ID")
+  plot<-ggplot(plot_dat %>% filter(variable!="Shoulder"))+
+    geom_hline(data = plot_dat %>% filter(variable=="Shoulder"),aes(yintercept=value),color="black")+
+    geom_hline(data = plot_dat %>% filter(variable=="Shoulder"),aes(yintercept=value*1.4),color="green",alpha=.5)+
     geom_line(aes(x=as.Date(paste("2018",as.numeric(substr(variable,2,3)),"01",sep="-")),y=value),color="blue")+
+    geom_point(aes(x=as.Date(paste("2018",as.numeric(substr(variable,2,3)),"01",sep="-")),y=value),color="black")+
+    geom_vline(xintercept=c(as.numeric(as.Date("2018-02-15")),as.numeric(as.Date("2018-06-15")),as.numeric(as.Date("2018-08-15")),as.numeric(as.Date("2018-11-15"))),alpha=.5,color="red")+
     labs(x="Month",y="kWh",title=paste(i,test$n[test$group==i]))+
     facet_grid(ID~.,scales = "free")
   ggsave(plot,filename = paste0("~/desktop/ComEd Plots/",i,".jpg"),width = 7, height = 5)
 }
 
-usable$avg_group
-agg_2016<-use_2016 %>% 
-  group_by(ID) %>% 
-  summarise(
-    total_use_2016=sum(BILLING_USAGE_QTY),
-    summer_use_2016=sum(BILLING_USAGE_QTY[MM_ADJ_BILLING_YEARMO==201706|MM_ADJ_BILLING_YEARMO==201707|MM_ADJ_BILLING_YEARMO==201708]),
-    winter_use_2016=sum(BILLING_USAGE_QTY[MM_ADJ_BILLING_YEARMO==201612|MM_ADJ_BILLING_YEARMO==201701|MM_ADJ_BILLING_YEARMO==201702]))
-
-agg_2017<-use_2017 %>% 
-  group_by(ID) %>% 
-  summarise(
-    total_use_2017=sum(BILLING_USAGE_QTY),
-    summer_use_2017=sum(BILLING_USAGE_QTY[MM_ADJ_BILLING_YEARMO==201806|MM_ADJ_BILLING_YEARMO==201807|MM_ADJ_BILLING_YEARMO==201808]),
-    winter_use_2017=sum(BILLING_USAGE_QTY[MM_ADJ_BILLING_YEARMO==201712|MM_ADJ_BILLING_YEARMO==201801|MM_ADJ_BILLING_YEARMO==201802]))
-
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
 
 # prizm + census for likelood of LI scale of 1-9 -> surveys. 
+
+test<-usable %>% select(ID,contains("M",ignore.case = FALSE)) %>% reshape2::melt(.,id.vars="ID") %>% 
+  # group_by(ID) %>% mutate(rank=rank(-as.numeric(value)))
+  group_by(ID) %>% mutate(rank=value/max(value))
+
+test2<-test %>% group_by(variable) %>% summarise(n=n(),med_rank=median(rank),mean_rank=mean(rank),sd_rank=sd(rank))
