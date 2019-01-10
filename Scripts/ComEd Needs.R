@@ -82,57 +82,33 @@ usable$winter_group[usable$ws_ratio<1.4&usable$ws_ratio>=.9&usable$winter_group=
 usable$winter_group[usable$ws_ratio<.9&usable$winter_group=="NOT DEFINED"]<-"Down"
 table(usable$winter_group)/nrow(usable)
 
-# usage groups
-hist(usable$S_JA[usable$S_JA<quantile(usable$S_JA,probs = .99)],breaks=100)
-quantile(usable$S_JA,probs = seq(0,1,.05))
-usable$s_group<-ifelse(usable$S_JA>=1500,TRUE,FALSE)
-table(usable$s_group)
-
-hist(usable$W_DJF[usable$W_DJF<quantile(usable$W_DJF,probs = .99)],breaks=100)
-quantile(usable$W_DJF,probs = seq(0,1,.05))
-usable$w_group<-ifelse(usable$W_DJF>=1300,TRUE,FALSE)
-table(usable$w_group)
-
-hist(usable$Shoulder[usable$Shoulder<quantile(usable$Shoulder,probs = .99)],breaks=100)
-quantile(usable$Shoulder,probs = seq(0,1,.05))
-usable$sh_group<-ifelse(usable$Shoulder>=1000,TRUE,FALSE)
-table(usable$sh_group)
-
-hist(usable$avg[usable$avg<quantile(usable$avg,probs = .99)],breaks=100)
-quantile(usable$avg,probs = seq(0,1,.05))
-usable$avg_group<-ifelse(usable$avg>=1100,TRUE,FALSE)
-table(usable$avg_group)
-
-use_cross<-usable %>% group_by(s_group,w_group,sh_group,avg_group) %>% summarise(n=n(),m_s=mean(S_JA),m_w=mean(W_DJF),m_sh=mean(Shoulder),m_avg=mean(avg))
-
-usable$high_use<-apply(usable %>% select(s_group,w_group,sh_group,avg_group),1,FUN=max)
-table(usable$high_use)
-
-test<-usable %>% 
-  group_by(high_use,summer_group,winter_group) %>% 
-  summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),Shoulder=mean(Shoulder),summer=mean(S_JA),winter=mean(W_DJF),group=unique(paste(high_use,summer_group,winter_group))) %>%
-  group_by(high_use) %>% 
-  mutate(p_use=n/sum(n)) %>% 
-  arrange(-n)
-
-test2<-usable %>% group_by(high_use,summer_group,winter_group) %>% mutate(rand=rank(runif(n())),group=paste(high_use,summer_group,winter_group))
-
+# Tech groups
 usable$e_cool<-"NOT DEFINED"
 usable$e_cool[usable$summer_group=="Up"]<-"CAC"
 usable$e_cool[usable$summer_group=="Flat"]<-"Window Unit"
-usable$e_cool[usable$summer_group=="Down"]<-"None"
+usable$e_cool[usable$summer_group=="Down"]<-"No Cooling"
 table(usable$e_cool)
 
 usable$e_heat<-ifelse(usable$winter_group=="Up","Elec Heat","Gas Heat")
+table(usable$e_heat)
 
-test<-usable %>% 
+# usage groups
+use_groups<-usable %>% 
+  group_by(e_cool,e_heat) %>% 
+  mutate(high_use=ifelse(avg>=as.numeric(quantile(avg,probs = .8)),"High","Low"))
+
+# ggplot(use_groups %>% mutate(group=paste(e_cool,e_heat)))+
+#   geom_point(aes(x=avg,y=high_use),size=.01)+
+#   facet_grid(group~.)
+
+test<-use_groups %>% 
   group_by(high_use,e_cool,e_heat) %>% 
   summarise(n=n(),sw=mean(sw_ratio),sd_sw=sd(sw_ratio),avg=mean(avg),Shoulder=mean(Shoulder),summer=mean(S_JA),winter=mean(W_DJF),group=unique(paste(high_use,e_cool,e_heat))) %>%
   group_by(high_use) %>% 
   mutate(p_use=n/sum(n)) %>% 
   arrange(-n)
 
-test2<-usable %>% group_by(high_use,e_cool,e_heat) %>% mutate(rand=rank(runif(n())),group=paste(high_use,e_cool,e_heat))
+test2<-use_groups %>% group_by(high_use,e_cool,e_heat) %>% mutate(rand=rank(runif(n())),group=paste(high_use,e_cool,e_heat))
 
 for(i in unique(test$group)){
   print(i)
@@ -148,10 +124,101 @@ for(i in unique(test$group)){
   ggsave(plot,filename = paste0("~/desktop/ComEd Plots/",i,".jpg"),width = 7, height = 5)
 }
 
+table(use_groups$e_cool)/nrow(use_groups)
+table(use_groups$e_heat)/nrow(use_groups)
+table(use_groups$high_use)/nrow(use_groups)
+
+# prizm + census for likelood of LI scale of 1-9 -> surveys. 
+library(dplyr)
+library(jsonlite)
+
+#ACS
+#----------------------------------------------------------------------------------------------------
+#this requires an ACS API key (https://www.census.gov/data/developers/data-sets/acs-5year.html)
+#key is registered to Ross Donaldson (donaldson@evergreen.com)
+#S0101_C01_001E = Total!!Estimate!!Total population
+#S1901_C01_012E = Households!!Estimate!!Median income (dollars) (S1901)
+#S1901_C01_013E = Households!!Estimate!!Mean income (dollars) (S1901)
+#S1501_C02_009E = Percent!!Estimate!!Population 25 years and over!!High school graduate (includes equivalency) (S1501)
+#S1501_C02_012E = Percent!!Estimate!!Population 25 years and over!!Bachelor's degree (S1501)
+#S1501_C02_013E = Percent!!Estimate!!Population 25 years and over!!Graduate or professional degree (S1501)
+#S1101_C01_002E = Total!!Estimate!!Average household size (S1101)
+#S0801_C01_046E = Total!!Estimate!!TRAVEL TIME TO WORK!!Mean travel time to work (minutes) (S0801)
+#S2501_C01_001E = Occupied housing units!!Estimate!!Occupied housing units (S2501)
+#S2501_C03_001E = Owner-occupied housing units!!Estimate!!Occupied housing units (S2501)
+#S1701_C01_001E	= Estimate!!Total!!Population for whom poverty status is determined	POVERTY STATUS IN THE PAST 12 MONTHS (S1701)
+
+#input state as census numeric code
+#IL = 17
+acs_pull <- function(state = 17) {
+  data <- data.frame(fromJSON(paste("https://api.census.gov/data/2017/acs/acs5/subject?get=NAME,S0101_C01_001E,S1901_C01_002E,S1901_C01_003E,S1901_C01_004E,S1901_C01_005E,S1901_C01_006E,S1901_C01_007E,S1901_C01_008E,S1901_C01_009E,S1901_C01_010E,S1901_C01_011E,S1901_C01_012E,S1901_C01_013E,S1701_C01_038E,S1701_C01_039E,S1701_C01_040E,S1701_C01_041E,S1701_C01_042E,S1701_C01_043E,S1701_C01_044E,S1701_C01_045E,S1701_C01_001E,S1501_C02_009E,S1501_C02_012E,S1501_C02_013E,S1101_C01_002E,S0801_C01_046E,S2501_C01_001E,S2501_C03_001E,S2501_C05_001E&for=tract:*&in=state:", toString(state), "&key=623020359418e43f907eddc1c27bbf7b9814d102", sep = "")))[-1,]
+  colnames(data) <- c("Name", "total_population",
+    "inc_ls10k","inc_10k15k","inc_15k25k","inc_25k35k","inc_35k50k","inc_50k75k","inc_75k100k","inc_100k150k","inc_150k200k","inc_mr200k","median_income", "mean_income",
+    "pov_50p","pov_125p","pov_150p","pov_185p","pov_200p","pov_300p","pov_400p","pov_500p","pov_den",
+    "high_school_graduate", "bachelors_degree", "graduate_professional_degree",
+    "household_size", "travel_time", "housing_units", "owned", "rented", "state", "county", "tract")
+  data[,2:31] <- as.numeric(sapply(data[,2:31],as.vector))
+  data <- data %>%
+    group_by(Name) %>%
+    mutate(owned_percentage = owned / housing_units) %>%
+    mutate(rent_percentage = rented / housing_units) %>%
+    mutate(CENSUS_TRACT_CODE = paste(state,county,tract,sep = "")) %>% 
+    ungroup()
+  data
+}
+
+census_pull<-acs_pull()
+
+census_pull[census_pull==-666666666.0]<-NA
+
+census_pull$pov_score<-census_pull$inc_ls10k*10+census_pull$inc_10k15k*8+census_pull$inc_15k25k*6+census_pull$inc_25k35k*5+
+  census_pull$inc_35k50k*4+census_pull$inc_50k75k*3+census_pull$inc_75k100k*2+census_pull$inc_100k150k+
+  (census_pull$pov_50p/census_pull$pov_den+census_pull$pov_125p/census_pull$pov_den+census_pull$pov_150p/census_pull$pov_den+census_pull$pov_185p/census_pull$pov_den+
+      census_pull$pov_200p/census_pull$pov_den+census_pull$pov_300p/census_pull$pov_den+census_pull$pov_400p/census_pull$pov_den)*(census_pull$household_size-1)
+
+pov_score<-left_join(
+  census %>% select(geoid,city,county,per_lihh_80) %>% mutate(geoid=as.character(geoid)),
+  census_pull %>% select(CENSUS_TRACT_CODE,pov_score,total_population),
+  by=c("geoid"="CENSUS_TRACT_CODE")
+)
+
+pov_score$li_bin<-ntile(pov_score$per_lihh_80,9)
+pov_score$score_bin<-ntile(pov_score$pov_score,9)
+table(pov_score$li_bin,pov_score$score_bin)
+
+pov_score$final_score<-apply(pov_score %>% select(li_bin,score_bin),1,FUN = mean)
+table(pov_score$final_score)
+
+# usage and LI
+use_LI<-use_groups %>% left_join(customers %>% select(ID,CENSUS_TRACT_CODE) %>% mutate(CENSUS_TRACT_CODE=as.character(CENSUS_TRACT_CODE)),by="ID") %>% 
+  left_join(pov_score %>% select(geoid,final_score,per_lihh_80,pov_score,li_bin,score_bin),by=c("CENSUS_TRACT_CODE"="geoid"))
+
+use_LI_summary<-use_LI %>% group_by(high_use,e_cool,e_heat) %>% summarise(n=n(),min_LI=min(final_score,na.rm = TRUE),median_LI=median(final_score,na.rm = TRUE),max_LI=max(final_score,na.rm = TRUE),t_LI=sum(final_score>=7,na.rm=TRUE),p_LI=sum(final_score>=7,na.rm = TRUE)/n)
+
+li_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
+  geom_histogram(aes(x=per_lihh_80),bins=10)+
+  labs(x="Census % LI",title="ComEd Census LI Data")+
+  facet_grid(group~.,scales = "free")
+
+ggsave(plot=li_plot,filename = "~/desktop/ComEd Plots/Tech by p LI.jpg",height = 9,width = 8)
+
+pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
+  geom_histogram(aes(x=pov_score),bins=10)+
+  labs(x="Census LI Likelihood Score",title="HL Census LI Score")+
+  facet_grid(group~.,scales = "free")
+
+ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by HL score.jpg",height = 9,width = 8)
+
+final_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
+  geom_histogram(aes(x=final_score),bins=10)+
+  labs(x="Combined Score",title="Combined Binned Score")+
+  facet_grid(group~.,scales = "free")
+
+ggsave(plot=final_plot,filename = "~/desktop/ComEd Plots/Tech by combined score.jpg",height = 9,width = 8)
+
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
 
-# prizm + census for likelood of LI scale of 1-9 -> surveys. 
 
 test<-usable %>% select(ID,contains("M",ignore.case = FALSE)) %>% reshape2::melt(.,id.vars="ID") %>% 
   # group_by(ID) %>% mutate(rank=rank(-as.numeric(value)))
