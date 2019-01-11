@@ -171,6 +171,25 @@ census_pull<-acs_pull()
 
 census_pull[census_pull==-666666666.0]<-NA
 
+census_pull$vlow_inc<-percent_rank(apply(census_pull %>% select(inc_ls10k,inc_10k15k,inc_15k25k),1,sum))
+census_pull$low_inc<-percent_rank(apply(census_pull %>% select(inc_25k35k,inc_35k50k),1,sum))
+census_pull$high_pov<-percent_rank(census_pull$pov_125p/census_pull$pov_den)
+census_pull$med_pov<-percent_rank((census_pull$pov_300p-census_pull$pov_125p)/census_pull$pov_den)
+census_pull$med_inc<-percent_rank(census_pull$median_income)
+census_pull$house_rank<-percent_rank(census_pull$household_size)
+census_pull$pov_score<-apply(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank),1,mean)
+
+summary(census_pull)
+
+cor_table<-cor(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,pov_score),
+  census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,pov_score),
+  use="complete.obs")
+
+write.csv(cor_table,file="~/desktop/correlation table.csv",row.names = TRUE)
+
+
+
+
 census_pull$pov_score<-census_pull$inc_ls10k*10+census_pull$inc_10k15k*8+census_pull$inc_15k25k*6+census_pull$inc_25k35k*5+
   census_pull$inc_35k50k*4+census_pull$inc_50k75k*3+census_pull$inc_75k100k*2+census_pull$inc_100k150k+
   (census_pull$pov_50p/census_pull$pov_den+census_pull$pov_125p/census_pull$pov_den+census_pull$pov_150p/census_pull$pov_den+census_pull$pov_185p/census_pull$pov_den+
