@@ -103,36 +103,16 @@ plot_ttow <- function(x=dta_test, pre_test=TRUE, coord=c(18, 7), method="TTOW", 
 }
 
 # Select holdout sample weeks
-set.seed(71614)
+set.seed(71614) #HO1
+# set.seed(198834) #HO2
+# set.seed(813098) #HO3
+
 dta$holdout <- (as.numeric(strftime(dta$readdate, '%V')) %in% sample(1:53, 16))*1
 table(dta$holdout,dta$said)
 
-# Select individual customer for modeling
-sel_id <- 8 ; id_plot <- 7
-
-### Basic TTOW model
-
-# ## 1. 24/7 conditioning assumption ----
-# # Random sample pre-period model vs. holdout pre
-# ttow_samp_lm <- lm(kwh ~ tow + Tc1 + Tc2 + Tc3 + Tc4 + Tc5 + Tc6, data=subset(dta, said==sel_id & holdout==0 & post==0 & is.na(temp)==FALSE))
-# x <- predict(ttow_samp_lm, subset(dta, said==sel_id & holdout==1 & post==0 & is.na(temp)==FALSE), interval="confidence", level=0.95) # prediction interval also possible
-# x <- as.data.frame(matrix(unlist(x), ncol = 3))
-# dta_test <- data.frame(subset(dta, said==sel_id & holdout==1 & post==0 & is.na(temp)==FALSE), fit=x$V1, lwr=x$V2, upr=x$V3)
-# plot_ttow(dta_test, pre_test=TRUE, coord=c(18, 7))
-#
-#
-# # Full pre-period model vs. actual post
-# ttow_lm <- lm(kwh ~ tow + Tc1 + Tc2 + Tc3 + Tc4 + Tc5 + Tc6, data=subset(dta, said==sel_id & post==0 & is.na(temp)==FALSE))
-# # summary(ttow_lm)
-# x <- predict(ttow_lm, subset(dta, said==sel_id & post==1 & is.na(temp)==FALSE), interval="confidence", level=0.95) # prediction interval also possible
-# x <- as.data.frame(matrix(unlist(x), ncol = 3))
-# dta_post <- data.frame(subset(dta, said==sel_id & post==1 & is.na(temp)==FALSE), fit=x$V1, lwr=x$V2, upr=x$V3)
-# plot_ttow(dta_post, pre_test=FALSE, coord=c(18, 7))
-
-
-
 ## 2. Estimate occupied hours across entire week, use this to define typical hours of operation ----
-sel_id <- 2
+# said; Sample ID
+sel_id <- 8; id_plot<-7
 
 # # Use sample pre to define operating schedule
 dta$dow <- substr(dta$tow, 1, 1)
@@ -211,22 +191,32 @@ dta_full <- left_join(dta_full, st_map, by="said") %>% left_join(hopps_daybins, 
 dta_full$hour <- format(dta_full$readdate, "%H")
 amics_lm_test <- dta_full %>% subset(holdout==0 & post==0) %>% group_by(said, day_bin, hour) %>% summarize(fit=mean(kwh, na.rm=TRUE), lwr=fit*0.99, upr=fit*1.01)
 pred_ho <- dta_full %>% subset(holdout==1 & post==0) %>% left_join(amics_lm_test, by=c("said", "day_bin", "hour"))
-plot_ttow(subset(pred_ho, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 5), "AMICS")
-
+plot_ttow(subset(pred_ho, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 2), "AMICS")
+ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_HO3_",id_plot,".jpg"))
 
 # # Full pre-period model vs. actual post
 amics_lm <- dta_full %>% subset(post==0) %>% group_by(said, day_bin, hour) %>% summarize(fit=mean(kwh, na.rm=TRUE), lwr=fit*0.99, upr=fit*1.01)
 pred_pre <- dta_full %>% subset(post==0) %>% left_join(amics_lm, by=c("said", "day_bin", "hour"))
-plot_ttow(subset(pred_pre, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 5), "AMICS") + labs(title=sprintf("Pre-period full load shape for ID %s", id_plot))
+plot_ttow(subset(pred_pre, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 2), "AMICS") + labs(title=sprintf("Pre-period full load shape for ID %s", id_plot))
+ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_full_",id_plot,".jpg"))
 pred_post <- dta_full %>% subset(post==1) %>% left_join(amics_lm, by=c("said", "day_bin", "hour"))
-plot_ttow(subset(pred_post, is.na(fit)==FALSE), pre_test=FALSE, coord=c(10, 5), "AMICS")
-#
-#
-# # save(ttow_op_lm_test, ttow_non_lm_test, dta_test,
-# #      ttow_op_lm, ttow_non_lm, dta_pre, dta_post,
-# #      amics_lm_test, pred_ho, amics_lm, pred_pre, pred_post,
-# #      file=sprintf("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id%s.Rdata", id_plot))
+plot_ttow(subset(pred_post, is.na(fit)==FALSE), pre_test=FALSE, coord=c(15, 2), "AMICS")
+ggsave(file = paste0("~/desktop/AMI HVAC Outputs/post_",id_plot,".jpg"))
 
+amics_lm_test_hvac<-amics_lm_test
+pred_ho_hvac<-pred_ho
+amics_lm_hvac<-amics_lm
+pred_pre_hvac<-pred_pre
+pred_post_hvac<-pred_post
+
+save(amics_lm_test_hvac,pred_ho_hvac, amics_lm_hvac, pred_pre_hvac, pred_post_hvac,
+     file=sprintf("~/desktop/AMI HVAC Outputs/amics_ttow_id%s.Rdata", id_plot))
+
+rm(amics_lm_test_hvac,amics_lm_test,
+pred_ho_hvac,pred_ho,
+amics_lm_hvac,amics_lm,
+pred_pre_hvac,pred_pre,
+pred_post_hvac,pred_post)
 
 # Model fit stats
 # fit_stats <- function(amics, ttow, overlap=TRUE){
