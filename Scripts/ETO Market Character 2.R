@@ -581,8 +581,8 @@ SPWT_Table <- characterization_adj_kwh %>% filter(fuel_part!="Unknown Size Parti
   group_by(sector=naicsgroup) %>% 
   summarise(
     `Total GWh`=sum(kwh_adj/1e6),
-    `Participant %` = sum(kwh_adj[fuel_part!="Non-Participant"]/1e6)/`Total GWh`,
-    `Non-Participant %` = sum(kwh_adj[fuel_part=="Non-Participant"]/1e6)/`Total GWh`,
+    `Participant %` = sum(kwh_adj[!grepl("Non-Participant",fuel_part)]/1e6)/`Total GWh`,
+    `Non-Participant %` = sum(kwh_adj[grepl("Non-Participant",fuel_part)]/1e6)/`Total GWh`,
     `Proportion of Total` = `Total GWh`/sum(characterization_adj_kwh$kwh_adj/1e6)) %>% 
   data.frame()
 
@@ -671,8 +671,8 @@ SPTT_Table <- characterization_adj_therms %>% filter(fuel_part!="Unknown Size Pa
   group_by(sector=naicsgroup) %>% 
   summarise(
     `Total Therms (MM)`=sum(therms_adj/1e6),
-    `Participant %` = sum(therms_adj[fuel_part!="Non-Participant"]/1e6)/`Total Therms (MM)`,
-    `Non-Participant %` = sum(therms_adj[fuel_part=="Non-Participant"]/1e6)/`Total Therms (MM)`,
+    `Participant %` = sum(therms_adj[!grepl("Non-Participant",fuel_part)]/1e6)/`Total Therms (MM)`,
+    `Non-Participant %` = sum(therms_adj[grepl("Non-Participant",fuel_part)]/1e6)/`Total Therms (MM)`,
     `Proportion of Total` = `Total Therms (MM)`/sum(characterization_adj_therms$therms_adj/1e6)) %>% 
   data.frame()
 
@@ -691,10 +691,10 @@ SSPT_Table <- population %>% filter(participation=="Participant") %>%
     Participants=n(),
     `2017 GWh Usage`=sum(kwh2017/1e6,na.rm = TRUE),
     `Total GWh Savings` = sum(kwh_save/1e6,na.rm = TRUE),
-    `GWh Savings Ratio`=`Total GWh Savings`/`2017 GWh Usage`,
+    `GWh Savings Ratio`=`Total GWh Savings`/(`2017 GWh Usage`+`Total GWh Savings`),
     `2017 Therms Usage (MM)`=sum(therms2017/1e6,na.rm = TRUE),
     `Total Therms Savings (MM)` = sum(therms_save/1e6,na.rm = TRUE),
-    `Therms Savings Ratio`=`Total Therms Savings (MM)`/`2017 Therms Usage (MM)`) %>% 
+    `Therms Savings Ratio`=`Total Therms Savings (MM)`/(`2017 Therms Usage (MM)`+`Total Therms Savings (MM)`)) %>% 
   data.frame()
   
 # write.xlsx(SSPT_Table,file = "/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Sector Savings Ratios",append = TRUE,row.names = FALSE)
@@ -734,6 +734,24 @@ table4<-population %>%
 # write.xlsx(as.data.frame(table2),file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Measure by Type",append = TRUE,row.names = FALSE)
 # write.xlsx(as.data.frame(table3),file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Sector",append = TRUE,row.names = FALSE)
 # write.xlsx(as.data.frame(table4),file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Site by Region",append = TRUE,row.names = FALSE)
+
+# Additional Tables (1/15)
+## Load by customer size table
+CPT_table<-population %>% group_by(`Customer Size`=fuel_size) %>%
+  summarise(
+    `% Participant kWh`=sum(kwh2017[participation=="Participant"]/1e6,na.rm = TRUE)/sum(kwh2017/1e6,na.rm = TRUE),
+    `% Participant Therms`=sum(therms2017[participation=="Participant"]/1e6,na.rm = TRUE)/sum(therms2017/1e6,na.rm = TRUE)
+  ) %>% data.frame()
+
+## Load by region table
+RPT_table<-population %>% group_by(Region) %>%
+  summarise(
+    `% Participant kWh`=sum(kwh2017[participation=="Participant"]/1e6,na.rm = TRUE)/sum(kwh2017/1e6,na.rm = TRUE),
+    `% Participant Therms`=sum(therms2017[participation=="Participant"]/1e6,na.rm = TRUE)/sum(therms2017/1e6,na.rm = TRUE)
+  ) %>% data.frame()
+
+# write.xlsx(CPT_table,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Load by Customer Size",append = TRUE,row.names = FALSE)
+# write.xlsx(RPT_table,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Load by Region",append = TRUE,row.names = FALSE)
 
 # Final analysis data
 final_data<-population %>%
