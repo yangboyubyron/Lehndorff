@@ -102,10 +102,14 @@ plot_ttow <- function(x=dta_test, pre_test=TRUE, coord=c(18, 7), method="TTOW", 
   }
 }
 
+# remove bad data
+save_dta<-dta
+dta<-dta %>% filter(!(said==8&as.Date(readdate)>="2016-10-20"&as.Date(readdate)<="2017-02-01"))
+
 # Select holdout sample weeks
-set.seed(71614) #HO1
-# set.seed(198834) #HO2
-# set.seed(813098) #HO3
+# set.seed(71614) #HO1
+# set.seed(194834) #HO2
+set.seed(813098) #HO3
 
 dta$holdout <- (as.numeric(strftime(dta$readdate, '%V')) %in% sample(1:53, 16))*1
 table(dta$holdout,dta$said)
@@ -182,7 +186,7 @@ dta_full$operating <- ifelse(is.na(dta_full$start), 0, (dta_full$tow>dta_full$st
 
 
 # ## AMICS Indiv - Random sample pre-period model vs. holdout pre ----
-hopps_daybins <- readr::read_csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/hopps_daybins.csv")
+# hopps_daybins <- readr::read_csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/hopps_daybins.csv")
 hopps_daybins$date <- as.character(hopps_daybins$date)
 st_map <- select(track, stationid, said)
 
@@ -192,16 +196,24 @@ dta_full$hour <- format(dta_full$readdate, "%H")
 amics_lm_test <- dta_full %>% subset(holdout==0 & post==0) %>% group_by(said, day_bin, hour) %>% summarize(fit=mean(kwh, na.rm=TRUE), lwr=fit*0.99, upr=fit*1.01)
 pred_ho <- dta_full %>% subset(holdout==1 & post==0) %>% left_join(amics_lm_test, by=c("said", "day_bin", "hour"))
 plot_ttow(subset(pred_ho, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 2), "AMICS")
-ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_HO3_",id_plot,".jpg"))
+# ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_HO3_",id_plot,".jpg"))
 
 # # Full pre-period model vs. actual post
 amics_lm <- dta_full %>% subset(post==0) %>% group_by(said, day_bin, hour) %>% summarize(fit=mean(kwh, na.rm=TRUE), lwr=fit*0.99, upr=fit*1.01)
 pred_pre <- dta_full %>% subset(post==0) %>% left_join(amics_lm, by=c("said", "day_bin", "hour"))
 plot_ttow(subset(pred_pre, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 2), "AMICS") + labs(title=sprintf("Pre-period full load shape for ID %s", id_plot))
-ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_full_",id_plot,".jpg"))
+# ggsave(file = paste0("~/desktop/AMI HVAC Outputs/pre_full_",id_plot,".jpg"))
 pred_post <- dta_full %>% subset(post==1) %>% left_join(amics_lm, by=c("said", "day_bin", "hour"))
-plot_ttow(subset(pred_post, is.na(fit)==FALSE), pre_test=FALSE, coord=c(15, 2), "AMICS")
-ggsave(file = paste0("~/desktop/AMI HVAC Outputs/post_",id_plot,".jpg"))
+plot_ttow(subset(pred_post, is.na(fit)==FALSE), pre_test=FALSE, coord=c(15, 1), "AMICS")
+# ggsave(file = paste0("~/desktop/AMI HVAC Outputs/post_",id_plot,".jpg"))
+
+ggplot(pred_pre)+
+  geom_point(aes(x=readdate,y=kwh),size=.01,color="blue")+
+  geom_point(aes(x=readdate,y=fit),size=.01,color="red")
+
+ggplot(pred_post)+
+  geom_point(aes(x=readdate,y=kwh),size=.01,color="blue")+
+  geom_point(aes(x=readdate,y=fit),size=.01,color="red")
 
 amics_lm_test_hvac<-amics_lm_test
 pred_ho_hvac<-pred_ho
@@ -217,6 +229,7 @@ pred_ho_hvac,pred_ho,
 amics_lm_hvac,amics_lm,
 pred_pre_hvac,pred_pre,
 pred_post_hvac,pred_post)
+
 
 # Model fit stats
 # fit_stats <- function(amics, ttow, overlap=TRUE){
