@@ -16,7 +16,8 @@ load(file="/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/T
 
 # tracking/census
 census<-read.xlsx("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/Latest matrix - estimated ie density by geography.xlsx",sheetName = "Sheet1")
-PRIZM<-read.xlsx("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/PRIZM Premier Master Demographic Spreadsheet External 2017 HL.xlsx",sheetName = "Essentials") %>% mutate(code_merge=as.numeric(Full_Code))
+# PRIZM<-read.xlsx("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/PRIZM Premier Master Demographic Spreadsheet External 2017 HL.xlsx",sheetName = "Essentials") %>% mutate(code_merge=as.numeric(Full_Code))
+PRIZM<-read.csv("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/PrizmDataForTargeting.csv",stringsAsFactors = FALSE)
 
 # within LI, high users - avg monthly, minimum monthly, cooling in summer, heat with elec, summer/winter sholder ratio
 # Usage aggregation
@@ -95,7 +96,7 @@ table(usable$e_heat)
 # usage groups
 use_groups<-usable %>% 
   group_by(e_cool,e_heat) %>% 
-  mutate(high_use=ifelse(avg>=as.numeric(quantile(avg,probs = .8)),"High","Low"))
+  mutate(high_use=ifelse(avg>=as.numeric(quantile(avg,probs = .8)),"High","Low"),use_quant=percent_rank(avg))
 
 # ggplot(use_groups %>% mutate(group=paste(e_cool,e_heat)))+
 #   geom_point(aes(x=avg,y=high_use),size=.01)+
@@ -171,35 +172,34 @@ census_pull<-acs_pull()
 
 census_pull[census_pull==-666666666.0]<-NA
 
-census_pull$vlow_inc<-percent_rank(apply(census_pull %>% select(inc_ls10k,inc_10k15k,inc_15k25k),1,sum))
-census_pull$low_inc<-percent_rank(apply(census_pull %>% select(inc_25k35k,inc_35k50k),1,sum))
-census_pull$high_pov<-percent_rank(census_pull$pov_125p/census_pull$pov_den)
-census_pull$med_pov<-percent_rank((census_pull$pov_300p-census_pull$pov_125p)/census_pull$pov_den)
-census_pull$med_inc<-percent_rank(census_pull$median_income)
-census_pull$house_rank<-percent_rank(census_pull$household_size)
+# census_pull$vlow_inc<-percent_rank(apply(census_pull %>% select(inc_ls10k,inc_10k15k,inc_15k25k),1,sum))
+# census_pull$low_inc<-percent_rank(apply(census_pull %>% select(inc_25k35k,inc_35k50k),1,sum))
+# census_pull$high_pov<-percent_rank(census_pull$pov_125p/census_pull$pov_den)
+# census_pull$med_pov<-percent_rank((census_pull$pov_300p-census_pull$pov_125p)/census_pull$pov_den)
+# census_pull$med_inc<-percent_rank(census_pull$median_income)
+# census_pull$house_rank<-percent_rank(census_pull$household_size)
+# census_pull$pov_score<-apply(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank),1,mean)
+census_pull$vlow_inc<-apply(census_pull %>% select(inc_ls10k,inc_10k15k,inc_15k25k),1,sum)
+census_pull$low_inc<-apply(census_pull %>% select(inc_25k35k,inc_35k50k),1,sum)
+census_pull$high_pov<-census_pull$pov_125p/census_pull$pov_den
+census_pull$med_pov<-(census_pull$pov_300p-census_pull$pov_125p)/census_pull$pov_den
+census_pull$med_inc<-census_pull$median_income
+census_pull$house_rank<-census_pull$household_size
 census_pull$pov_score<-apply(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank),1,mean)
+
 
 summary(census_pull)
 
-cor_table<-cor(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,pov_score),
-  census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,pov_score),
-  use="complete.obs")
-
-write.csv(cor_table,file="~/desktop/correlation table.csv",row.names = TRUE)
-
-
-
-
-census_pull$pov_score<-census_pull$inc_ls10k*10+census_pull$inc_10k15k*8+census_pull$inc_15k25k*6+census_pull$inc_25k35k*5+
-  census_pull$inc_35k50k*4+census_pull$inc_50k75k*3+census_pull$inc_75k100k*2+census_pull$inc_100k150k+
-  (census_pull$pov_50p/census_pull$pov_den+census_pull$pov_125p/census_pull$pov_den+census_pull$pov_150p/census_pull$pov_den+census_pull$pov_185p/census_pull$pov_den+
-      census_pull$pov_200p/census_pull$pov_den+census_pull$pov_300p/census_pull$pov_den+census_pull$pov_400p/census_pull$pov_den)*(census_pull$household_size-1)
+# census_pull$pov_score<-census_pull$inc_ls10k*10+census_pull$inc_10k15k*8+census_pull$inc_15k25k*6+census_pull$inc_25k35k*5+
+#   census_pull$inc_35k50k*4+census_pull$inc_50k75k*3+census_pull$inc_75k100k*2+census_pull$inc_100k150k+
+#   (census_pull$pov_50p/census_pull$pov_den+census_pull$pov_125p/census_pull$pov_den+census_pull$pov_150p/census_pull$pov_den+census_pull$pov_185p/census_pull$pov_den+
+#       census_pull$pov_200p/census_pull$pov_den+census_pull$pov_300p/census_pull$pov_den+census_pull$pov_400p/census_pull$pov_den)*(census_pull$household_size-1)
 
 pov_score<-left_join(
   census %>% select(geoid,city,county,per_lihh_80) %>% mutate(geoid=as.character(geoid)),
-  census_pull %>% select(CENSUS_TRACT_CODE,pov_score,total_population),
+  census_pull %>% select(CENSUS_TRACT_CODE,pov_score,vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,median_income, total_population),
   by=c("geoid"="CENSUS_TRACT_CODE")
-)
+) 
 
 pov_score$li_bin<-ntile(pov_score$per_lihh_80,9)
 pov_score$score_bin<-ntile(pov_score$pov_score,9)
@@ -209,31 +209,81 @@ pov_score$final_score<-apply(pov_score %>% select(li_bin,score_bin),1,FUN = mean
 table(pov_score$final_score)
 
 # usage and LI
-use_LI<-use_groups %>% left_join(customers %>% select(ID,CENSUS_TRACT_CODE) %>% mutate(CENSUS_TRACT_CODE=as.character(CENSUS_TRACT_CODE)),by="ID") %>% 
-  left_join(pov_score %>% select(geoid,final_score,per_lihh_80,pov_score,li_bin,score_bin),by=c("CENSUS_TRACT_CODE"="geoid"))
+use_LI<-use_groups %>% left_join(customers %>% select(ID,LOWINCOME, CENSUS_TRACT_CODE,PRIZM.Code) %>% mutate(CENSUS_TRACT_CODE=as.character(CENSUS_TRACT_CODE)),by="ID") %>% 
+  left_join(pov_score %>% select(geoid,per_lihh_80,vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,median_income),by=c("CENSUS_TRACT_CODE"="geoid")) %>% 
+  left_join(PRIZM,by=c("PRIZM.Code"="Code"))
 
-use_LI_summary<-use_LI %>% group_by(high_use,e_cool,e_heat) %>% summarise(n=n(),min_LI=min(final_score,na.rm = TRUE),median_LI=median(final_score,na.rm = TRUE),max_LI=max(final_score,na.rm = TRUE),t_LI=sum(final_score>=7,na.rm=TRUE),p_LI=sum(final_score>=7,na.rm = TRUE)/n)
+# use_LI_summary<-use_LI %>% group_by(high_use,e_cool,e_heat) %>% summarise(n=n(),min_LI=min(final_score,na.rm = TRUE),median_LI=median(final_score,na.rm = TRUE),max_LI=max(final_score,na.rm = TRUE),t_LI=sum(final_score>=7,na.rm=TRUE),p_LI=sum(final_score>=7,na.rm = TRUE)/n)
 
-li_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
-  geom_histogram(aes(x=per_lihh_80),bins=10)+
-  labs(x="Census % LI",title="ComEd Census LI Data")+
+cor_table<-cor(use_LI %>% ungroup() %>% mutate(is.li=LOWINCOME=="Yes") %>% select(is.li,per_lihh_80,vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,HHI...30k,Median.Income..Household.Based.,Average.Income..Neighborhood.Based.,Median.Age.in.Years,College.Grad,Net.Worth),
+  use_LI %>% ungroup() %>% mutate(is.li=LOWINCOME=="Yes") %>% select(is.li,per_lihh_80,vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,HHI...30k,Median.Income..Household.Based.,Average.Income..Neighborhood.Based.,Median.Age.in.Years,College.Grad,Net.Worth),
+  use="complete.obs")
+
+# write.csv(cor_table,file="~/desktop/correlation table.csv",row.names = TRUE)
+
+use_LI$vlow_inc_p<-round(percent_rank(use_LI$vlow_inc),2)
+use_LI$high_pov_p<-round(percent_rank(use_LI$high_pov),2)
+use_LI$med_inc_p<-round(percent_rank(desc(use_LI$med_inc)),2)
+use_LI$Median.Income..Household.Based._p<-round(percent_rank(desc(use_LI$Median.Income..Household.Based.)),2)
+use_LI$Net.Worth_p<-round(percent_rank(desc(use_LI$Net.Worth)),2)
+
+use_LI$LI_score<-apply(use_LI %>% ungroup() %>% select(vlow_inc_p,high_pov_p,med_inc_p,Median.Income..Household.Based._p,Net.Worth_p),
+  1,FUN = mean,na.rm=TRUE)
+
+summary(use_LI$LI_score[use_LI$LOWINCOME=="Yes"])
+summary(use_LI$LI_score[use_LI$LOWINCOME=="No"])
+
+hist(use_LI$LI_score[use_LI$LOWINCOME=="Yes"],breaks = 100)
+hist(use_LI$LI_score[use_LI$LOWINCOME=="No"],breaks = 100)
+hist(use_LI$LI_score,breaks = 100)
+
+tech_group<-use_LI %>% group_by(e_cool,e_heat) %>% summarise(n=n(),p.with_score=mean(!is.na(LI_score)),p.high_use=mean(high_use=="High"),p.LI=mean(LI_score>=.8,na.rm = TRUE),p.LI_high_use=mean(LI_score>=.8&high_use=="High",na.rm = TRUE))
+
+# write.csv(tech_group,"~/desktop/ComEd Plots/LI by tech group.csv",row.names = FALSE)
+
+li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
+  geom_histogram(aes(x=LI_score),bins=100)+
+  labs(x="LI Likelihood",title="LI Scores for Full Population",y="Count")+
+  theme(strip.text.y = element_text(angle = 0))+
   facet_grid(group~.,scales = "free")
 
-ggsave(plot=li_plot,filename = "~/desktop/ComEd Plots/Tech by p LI.jpg",height = 9,width = 8)
+# ggsave(plot=li_plot,filename = "~/desktop/ComEd Plots/High Use by LI.jpg",height = 9,width = 8)
 
 pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
-  geom_histogram(aes(x=pov_score),bins=10)+
-  labs(x="Census LI Likelihood Score",title="HL Census LI Score")+
+  geom_histogram(aes(x=LI_score),bins=100)+
+  labs(x="Census LI Likelihood Score",title="LI Scores Among High Users",y="Count")+
+  theme(strip.text.y = element_text(angle = 0))+
   facet_grid(group~.,scales = "free")
 
-ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by HL score.jpg",height = 9,width = 8)
+# ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by LI.jpg",height = 9,width = 8)
 
-final_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
-  geom_histogram(aes(x=final_score),bins=10)+
-  labs(x="Combined Score",title="Combined Binned Score")+
-  facet_grid(group~.,scales = "free")
+ComEd.LI<-ggplot(use_LI %>% filter(LOWINCOME=="Yes"))+
+  geom_histogram(aes(x=LI_score),bins=100)+
+  labs(title="LI Score Among 'LOWINCOME'",x="LI Likelihood",y="Count")
 
-ggsave(plot=final_plot,filename = "~/desktop/ComEd Plots/Tech by combined score.jpg",height = 9,width = 8)
+# ggsave(plot = ComEd.LI,filename = "~/desktop/ComEd Plots/LOWINCOME LI Score.jpg",height = 9,width = 8)
+
+ComEd.nLI<-ggplot(use_LI %>% filter(LOWINCOME=="No"))+
+  geom_histogram(aes(x=LI_score),bins=100)+
+  labs(title="LI Score Among non 'LOWINCOME'",x="LI Likelihood",y="Count")
+
+# ggsave(plot = ComEd.nLI,filename = "~/desktop/ComEd Plots/non-LOWINCOME LI Score.jpg",height = 9,width = 8)
+
+tech_use_by_LI<-ggplot(use_LI)+
+  geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(high_use,e_cool)))+
+  labs(title="Cooling and Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage/Cooling Tech")
+# ggsave(plot=tech_use_by_LI,filename = "~/desktop/ComEd Plots/Cooling Usage by LI.jpg",height = 9, width = 8)
+
+use_by_LI<-ggplot(use_LI)+
+  geom_bar(position="fill",aes(x=round(LI_score,1),fill=high_use))+
+  labs(title="Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage")
+# ggsave(plot=use_by_LI,filename = "~/desktop/ComEd Plots/Usage by LI.jpg",height = 9, width = 8)
+
+tech_by_LI<-ggplot(use_LI)+
+  geom_bar(position="fill",aes(x=round(LI_score,1),fill=e_cool))+
+  labs(title="Cooling by LI Score",x="LI Likelihood",y="Count",fill="Cooling Tech")
+# ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 9, width = 8)
+
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
