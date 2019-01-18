@@ -284,6 +284,11 @@ tech_by_LI<-ggplot(use_LI)+
   labs(title="Cooling by LI Score",x="LI Likelihood",y="Count",fill="Cooling Tech")
 # ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 9, width = 8)
 
+heat_agg<-use_LI %>% group_by(LI=round(percent_rank(LI_score),1),Usage=round(percent_rank(avg),1)) %>% summarise(n=n())
+
+ggplot(heat_agg)+
+  geom_point(aes(x=LI,y=Usage,color=n/nrow(use_LI)))+
+  scale_colour_gradient(low="white",high = "black")
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
