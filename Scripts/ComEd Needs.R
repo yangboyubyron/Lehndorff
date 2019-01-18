@@ -85,8 +85,8 @@ table(usable$winter_group)/nrow(usable)
 
 # Tech groups
 usable$e_cool<-"NOT DEFINED"
-usable$e_cool[usable$summer_group=="Up"]<-"CAC"
-usable$e_cool[usable$summer_group=="Flat"]<-"Window Unit"
+usable$e_cool[usable$summer_group=="Up"]<-"Central AC"
+usable$e_cool[usable$summer_group=="Flat"]<-"Partial AC"
 usable$e_cool[usable$summer_group=="Down"]<-"No Cooling"
 table(usable$e_cool)
 
@@ -245,7 +245,7 @@ zzz<-use_LI %>% filter(LI_score>.8) %>% group_by(e_cool,e_heat) %>% summarise(n=
 
 li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
   geom_histogram(aes(x=LI_score),bins=100)+
-  labs(x="LI Likelihood",title="LI Scores for Full Population",y="Count")+
+  labs(x="Low Income Likelihood Score",title="Low Income Likelihood Scores for Full Population",y="Count")+
   theme(strip.text.y = element_text(angle = 0))+
   facet_grid(group~.,scales = "free")
 
@@ -253,7 +253,7 @@ li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
 
 pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
   geom_histogram(aes(x=LI_score),bins=100)+
-  labs(x="LI Likelihood Score",title="LI Scores Among High Users",y="Count")+
+  labs(x="Low Income Likelihood Score Score",title="Low Income Likelihood Scores Among High Users",y="Count")+
   theme(strip.text.y = element_text(angle = 0))+
   facet_grid(group~.,scales = "free")
 
@@ -261,39 +261,82 @@ pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high
 
 ComEd.LI<-ggplot(use_LI %>% filter(LOWINCOME=="Yes"))+
   geom_histogram(aes(x=LI_score),bins=100)+
-  labs(title="LI Score Among 'LOWINCOME'",x="LI Likelihood",y="Count")
+  labs(title="Low Income Likelihood Score Among 'LOWINCOME'",x="Low Income Likelihood Score",y="Count")
 
-# ggsave(plot = ComEd.LI,filename = "~/desktop/ComEd Plots/LOWINCOME LI Score.jpg",height = 9,width = 8)
+# ggsave(plot = ComEd.LI,filename = "~/desktop/ComEd Plots/LOWINCOME Low Income Likelihood Score.jpg",height = 9,width = 8)
 
 ComEd.nLI<-ggplot(use_LI %>% filter(LOWINCOME=="No"))+
   geom_histogram(aes(x=LI_score),bins=100)+
-  labs(title="LI Score Among non 'LOWINCOME'",x="LI Likelihood",y="Count")
+  labs(title="Low Income Likelihood Score Among non 'LOWINCOME'",x="Low Income Likelihood Score",y="Count")
 
-# ggsave(plot = ComEd.nLI,filename = "~/desktop/ComEd Plots/non-LOWINCOME LI Score.jpg",height = 9,width = 8)
+# ggsave(plot = ComEd.nLI,filename = "~/desktop/ComEd Plots/non-LOWINCOME Low Income Likelihood Score.jpg",height = 9,width = 8)
 
 tech_use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(high_use,e_cool)))+
-  labs(title="Cooling and Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage/Cooling Tech")
+  labs(title="Cooling and Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Usage/Cooling Tech")
 # ggsave(plot=tech_use_by_LI,filename = "~/desktop/ComEd Plots/Cooling Usage by LI.jpg",height = 5, width = 8)
 
 use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=high_use))+
-  labs(title="Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage")
+  labs(title="Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Usage")
 # ggsave(plot=use_by_LI,filename = "~/desktop/ComEd Plots/Usage by LI.jpg",height = 5, width = 8)
 
 tech_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=e_cool))+
-  labs(title="Cooling by LI Score",x="LI Likelihood",y="Count",fill="Cooling Tech")
+  labs(title="Cooling by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Cooling Tech")
 # ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 5, width = 8)
 
 heat_agg<-use_LI %>% group_by(LI=round(percent_rank(LI_score),2),Usage=round(percent_rank(avg),2)) %>% summarise(n=n())
 
-cor_plot<-ggplot(use_LI %>% filter(e_cool=="Window Unit"))+
+cor_plot<-ggplot(use_LI %>% filter(us))+
   geom_bin2d(aes(x=percent_rank(LI_score),y=percent_rank(avg)))+
   scale_fill_gradient(low="white",high = "black")+
-  labs(x="LI Likelihood",y="Usage Percentile",fill="Count")
+  labs(x="Low Income Likelihood Score",y="Usage Percentile",fill="Count")
 # ggsave(plot=cor_plot,filename = "~/desktop/ComEd Plots/cor_use_LI.jpg",height = 5, width = 7)
 
+ggplot(use_LI)+
+  geom_boxplot(aes(x=as.factor(round(LI_score,1)),y=avg))+
+  coord_cartesian(ylim=c(0,5000))
+
+ggplot(use_LI)+
+  geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(e_heat,e_cool)))+
+  labs(title="Cooling and Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Heating/Cooling Tech")
+
+use_tech_distrib<-use_LI %>% 
+  filter(!is.na(LI_score)) %>% 
+  group_by(e_heat,e_cool,high_use,li_group=round(LI_score,1)) %>% 
+  summarise(n=n()) %>% 
+  group_by(high_use,li_group) %>% 
+  arrange(-li_group) %>% 
+  mutate(prop=n/sum(n)) %>% 
+  group_by(e_heat,e_cool,high_use) %>% 
+  mutate(cum_n=cumsum(n)) %>% 
+  group_by(high_use,li_group) %>% 
+  mutate(cum_prop=cum_n/sum(cum_n))
+
+prop_tech_use<-ggplot(use_tech_distrib)+
+  geom_line(aes(x=li_group,y=prop,color=paste(e_heat,e_cool)))+
+  facet_grid(high_use~.)+
+  labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Proportion of Technology Combination \nby Low Income Likelihood")
+# ggsave(plot = prop_tech_use,file="~/desktop/ComEd Plots/prop_tech_use.jpg",width=6,height = 4)
+
+n_tech_use<-ggplot(use_tech_distrib)+
+  geom_line(aes(x=li_group,y=n,color=paste(e_heat,e_cool)))+
+  facet_grid(high_use~.,scales = "free")+
+  labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Count of Technology Combination \nby Low Income Likelihood")
+# ggsave(plot = n_tech_use,file="~/desktop/ComEd Plots/n_tech_use.jpg",width=6,height = 4)
+
+cum_n_tech_use<-ggplot(use_tech_distrib %>% filter(li_group>=.6))+
+  geom_line(aes(x=li_group,y=cum_n,color=paste(e_heat,e_cool)))+
+  facet_grid(high_use~.,scales = "free")+
+  labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Cumulative Count of Technology \nCombination by Low Income Likelihood")
+# ggsave(plot = cum_n_tech_use,file="~/desktop/ComEd Plots/cumulative_n_tech_use.jpg",width=6,height = 4)
+
+cum_prop_tech_use<-ggplot(use_tech_distrib %>% filter(li_group>=.6))+
+  geom_line(aes(x=li_group,y=cum_prop,color=paste(e_heat,e_cool)))+
+  facet_grid(high_use~.,scales = "free")+
+  labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Cumulative Proportion of \nTechnology Combination by Low Income Likelihood")
+# ggsave(plot = cum_prop_tech_use,file="~/desktop/ComEd Plots/cumulative_prop_tech_use.jpg",width=6,height = 4)
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
