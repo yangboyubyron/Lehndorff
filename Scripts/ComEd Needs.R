@@ -62,7 +62,7 @@ use_agg$ws_ratio<-use_agg$W_DJF/use_agg$Shoulder
 use_agg$sw_ratio<-use_agg$S_JA/use_agg$W_DJF
 summary(use_agg)
 
-usable<-use_agg %>% filter((min>0|Shoulder>0)&!is.na(avg)&!is.na(S_JA)&!is.na(W_DJF))
+usable<-use_agg %>% filter((min>0|Shoulder>0)&!is.na(avg)&!is.na(S_JA)&!is.na(W_DJF)&avg<24000)
 quantile(usable$ws_ratio,probs = c(.1,.25,.5,.75,.9),na.rm = TRUE)
 
 hist(usable$ss_ratio[usable$ss_ratio<quantile(usable$ss_ratio,probs = .99)],breaks = 100)
@@ -241,6 +241,8 @@ tech_group<-use_LI %>% group_by(e_cool,e_heat) %>% summarise(n=n(),p.with_score=
 
 # write.csv(tech_group,"~/desktop/ComEd Plots/LI by tech group.csv",row.names = FALSE)
 
+zzz<-use_LI %>% filter(LI_score>.8) %>% group_by(e_cool,e_heat) %>% summarise(n=n(),min=min(avg),max=max(avg))
+
 li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
   geom_histogram(aes(x=LI_score),bins=100)+
   labs(x="LI Likelihood",title="LI Scores for Full Population",y="Count")+
@@ -251,11 +253,11 @@ li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
 
 pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
   geom_histogram(aes(x=LI_score),bins=100)+
-  labs(x="Census LI Likelihood Score",title="LI Scores Among High Users",y="Count")+
+  labs(x="LI Likelihood Score",title="LI Scores Among High Users",y="Count")+
   theme(strip.text.y = element_text(angle = 0))+
   facet_grid(group~.,scales = "free")
 
-# ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by LI.jpg",height = 9,width = 8)
+# ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by LI.jpg",height = 5,width = 8)
 
 ComEd.LI<-ggplot(use_LI %>% filter(LOWINCOME=="Yes"))+
   geom_histogram(aes(x=LI_score),bins=100)+
@@ -272,23 +274,26 @@ ComEd.nLI<-ggplot(use_LI %>% filter(LOWINCOME=="No"))+
 tech_use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(high_use,e_cool)))+
   labs(title="Cooling and Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage/Cooling Tech")
-# ggsave(plot=tech_use_by_LI,filename = "~/desktop/ComEd Plots/Cooling Usage by LI.jpg",height = 9, width = 8)
+# ggsave(plot=tech_use_by_LI,filename = "~/desktop/ComEd Plots/Cooling Usage by LI.jpg",height = 5, width = 8)
 
 use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=high_use))+
   labs(title="Usage by LI Score",x="LI Likelihood",y="Count",fill="Usage")
-# ggsave(plot=use_by_LI,filename = "~/desktop/ComEd Plots/Usage by LI.jpg",height = 9, width = 8)
+# ggsave(plot=use_by_LI,filename = "~/desktop/ComEd Plots/Usage by LI.jpg",height = 5, width = 8)
 
 tech_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=e_cool))+
   labs(title="Cooling by LI Score",x="LI Likelihood",y="Count",fill="Cooling Tech")
-# ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 9, width = 8)
+# ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 5, width = 8)
 
-heat_agg<-use_LI %>% group_by(LI=round(percent_rank(LI_score),1),Usage=round(percent_rank(avg),1)) %>% summarise(n=n())
+heat_agg<-use_LI %>% group_by(LI=round(percent_rank(LI_score),2),Usage=round(percent_rank(avg),2)) %>% summarise(n=n())
 
-ggplot(heat_agg)+
-  geom_point(aes(x=LI,y=Usage,color=n/nrow(use_LI)))+
-  scale_colour_gradient(low="white",high = "black")
+cor_plot<-ggplot(use_LI %>% filter(e_cool=="Window Unit"))+
+  geom_bin2d(aes(x=percent_rank(LI_score),y=percent_rank(avg)))+
+  scale_fill_gradient(low="white",high = "black")+
+  labs(x="LI Likelihood",y="Usage Percentile",fill="Count")
+# ggsave(plot=cor_plot,filename = "~/desktop/ComEd Plots/cor_use_LI.jpg",height = 5, width = 7)
+
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
