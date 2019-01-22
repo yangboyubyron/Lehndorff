@@ -25,7 +25,7 @@ SEM<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/SEM impact
 # join sector definitions to population data (existing ETO defintions)
 population<-population2 %>% left_join(sector_groups,by=c("market"="et_marketname"))
 
-# Nick's color scheme
+# Nick's color scheme (#b9cd96,#d8e4bc)
 EEcolors7<- c("#73B633","#2F2860","#095C9C","#5EBCDF","#C1C1C1","#FABC2B","#BBECCA")
 EEcolors4<-EEcolors7[2:5]
 EEcolors5<-EEcolors7[1:5]
@@ -289,7 +289,7 @@ counts_reg<-population %>% filter(naicsgroup!="Multifamily"&naicsgroup!="Multifa
 ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity", aes(x=participation,y=count_adj,fill=factor(fuel_part,levels = fuel_part_levels)))+
   scale_fill_manual(
-    values = c("dark green",EEcolors5[1],"green","light green",EEcolors5[2:5]),
+    values = c("dark green",EEcolors5[1],"#b9cd96","#d8e4bc",EEcolors5[2:5]),
     breaks = fuel_part_levels,
     labels = fuel_part_levels)+
   facet_grid(naicsgroup~.,switch = "y")+
@@ -310,7 +310,7 @@ ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
 #•	Proportion of program participation by market sector - # of sites FIG 8
 ggplot(counts_adj %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity",position = "fill",aes(x=factor(naicsgroup,levels = NAICS_levels),y=count_adj,fill=factor(fuel_part,levels = fuel_part_levels)))+
-  scale_fill_manual(values = c("dark green",EEcolors5[1],"green","light green",EEcolors5[2:5]))+
+  scale_fill_manual(values = c("dark green",EEcolors5[1],"#b9cd96","#d8e4bc",EEcolors5[2:5]))+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
@@ -378,7 +378,7 @@ ggplot(counts_adj_part %>% filter(naicsgroup!="Industrial") %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Sites",x="Business Sector",fill="Participation Status")
+  labs(y="Adjusted Percentage of Sites",x="Business Sector",fill="Participation Status")
 
 # ggsave("fig3_adj_count_recent.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -418,7 +418,7 @@ ggplot(counts_adj_part_region %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Sites",x="Business Region",fill="Participation Status")
+  labs(y="Adjusted Percentage of Sites",x="Business Region",fill="Participation Status")
 
 # ggsave("fig4_adj_count_recent_region.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -456,7 +456,7 @@ ggplot(counts_adj_part_size %>% ungroup())+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Adjusted Count of Sites",x="Business Energy Useage",fill="Participation Status")
+  labs(y="Adjusted Percentage of Sites",x="Business Energy Usage",fill="Participation Status")
 
 # ggsave("fig5_adj_count_recent_size.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -548,7 +548,7 @@ ggplot(characterization_recent_kwh %>% filter(naicsgroup!="Industrial") %>% ungr
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
   scale_y_continuous(labels = scales::comma)+
-  labs(y="Percent of GWh Usage",x="Business Sector",fill="Participation Status")
+  labs(y="Percent of Annual GWh Usage",x="Business Sector",fill="Participation Status")
 
 # ggsave("fig6_adj_kwh.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -568,7 +568,7 @@ SPDW_Table<-characterization_recent_kwh %>%
 # •	Proportion of program participation by market sector - kWh usage FIG 9
 ggplot(characterization_adj_kwh %>% filter(fuel_part!="Unknown Usage Participant"&fuel_part!="Unknown Usage Non-Participant"&naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=kwh_adj,fill=factor(fuel_part,fuel_part_levels2)))+
-  scale_fill_manual(values = c("dark green",EEcolors5[1],"green",EEcolors5[2:5]))+
+  scale_fill_manual(values = c("dark green",EEcolors5[1],"#b9cd96",EEcolors5[2:5]))+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
@@ -638,7 +638,7 @@ ggplot(characterization_recent_therms %>% filter(naicsgroup!="Industrial") %>% u
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
-  labs(y="Percent of Therms Usage",x="Business Sector",fill="Participation Status")
+  labs(y="Percent of Annual Therms Usage",x="Business Sector",fill="Participation Status")
 
 # ggsave("fig7_adj_therms.jpg",device = "jpeg",path = "~/desktop/ETO Plots/",width = 6.5,height = 6)
 
@@ -658,7 +658,7 @@ SPDT_Table<-characterization_recent_therms %>%
 # •	Proportion of program participation by market sector - gas usage FIG 10
 ggplot(characterization_adj_therms %>% filter(fuel_part!="Unknown Usage Participant"&fuel_part!="Unknown Usage Non-Participant"&naicsgroup!="Industrial") %>% ungroup())+
   geom_bar(stat="identity",position="fill",aes(x=factor(naicsgroup,levels=NAICS_levels),y=therms_adj,fill=factor(fuel_part,fuel_part_levels2)))+
-  scale_fill_manual(values = c("dark green",EEcolors5[1],"green",EEcolors5[2:5]))+
+  scale_fill_manual(values = c("dark green",EEcolors5[1],"#b9cd96",EEcolors5[2:5]))+
   coord_flip()+
   theme_minimal()+
   theme(text = element_text(family = "Helvetica",size=10),panel.grid.major.y = element_blank())+
@@ -752,6 +752,14 @@ RPT_table<-population %>% group_by(Region) %>%
 
 # write.xlsx(CPT_table,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Load by Customer Size",append = TRUE,row.names = FALSE)
 # write.xlsx(RPT_table,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Load by Region",append = TRUE,row.names = FALSE)
+
+# Additional Table (1/17) - 2017 gas and electric savings by program track
+save_2017<-projects %>% ungroup() %>% filter(year==2017) %>%
+  mutate(group=ifelse(trackval==1000,"Other",projecttrackdescription)) %>% 
+  group_by(Track=group) %>% summarise(n=n(),kWh=sum(workingkwh),Therms=sum(workingtherms),uni=n_distinct(projecttrackdescription)) %>% 
+  arrange(uni,n) %>% select(-uni) %>% data.frame()
+# write.xlsx(save_2017,file="/Users/Lehndorff/Desktop/ETO Plots/ETO_Tables.xlsx",sheetName = "Savings by Track",append = TRUE,row.names = FALSE)
+
 
 # Final analysis data
 final_data<-population %>%
