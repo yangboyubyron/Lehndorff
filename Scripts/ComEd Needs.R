@@ -96,7 +96,18 @@ table(usable$e_heat)
 # usage groups
 use_groups<-usable %>% 
   group_by(e_cool,e_heat) %>% 
-  mutate(high_use=ifelse(avg>=as.numeric(quantile(avg,probs = .8)),"High","Low"),use_quant=percent_rank(avg))
+  mutate(high_use=ifelse(avg>=as.numeric(quantile(avg,probs = .8)),"High","Other"),use_quant=percent_rank(avg))
+
+# High use thresholds
+HU_thresh<-usable %>% group_by(Cooling=e_cool,Heating=e_heat) %>% 
+  summarise(
+    Count=n(),
+    Mean=round(mean(avg)),
+    Median=round(median(avg)),
+    `Percentile 80`=round(quantile(avg,probs = .8)),
+    `Percentile 85`=round(quantile(avg,probs = .85)),
+    `Percentile 90`=round(quantile(avg,probs = .9)))
+# write.csv(HU_thresh,file = "~/desktop/ComEd Plots/Threasholds.csv",row.names = FALSE)
 
 # ggplot(use_groups %>% mutate(group=paste(e_cool,e_heat)))+
 #   geom_point(aes(x=avg,y=high_use),size=.01)+
@@ -110,6 +121,35 @@ test<-use_groups %>%
   arrange(-n)
 
 test2<-use_groups %>% group_by(high_use,e_cool,e_heat) %>% mutate(rand=rank(runif(n())),group=paste(high_use,e_cool,e_heat))
+
+CAC.G.O<-test2$ID[test2$group=="Other Central AC Gas Heat"&test2$ss_ratio==max(test2$ss_ratio[test2$group=="Other Central AC Gas Heat"])][1]
+CAC.E.O<-test2$ID[test2$group=="Other Central AC Elec Heat"&test2$ss_ratio==max(test2$ss_ratio[test2$group=="Other Central AC Elec Heat"])][1]
+CAC.G.H<-test2$ID[test2$group=="High Central AC Gas Heat"&test2$ss_ratio==max(test2$ss_ratio[test2$group=="High Central AC Gas Heat"])][1]
+CAC.E.H<-test2$ID[test2$group=="High Central AC Elec Heat"&test2$ss_ratio==max(test2$ss_ratio[test2$group=="High Central AC Elec Heat"])][1]
+NO.G.O<-test2$ID[test2$group=="Other No Cooling Gas Heat"&test2$ss_ratio==min(test2$ss_ratio[test2$group=="Other No Cooling Gas Heat"])][1]
+NO.E.O<-test2$ID[test2$group=="Other No Cooling Elec Heat"&test2$ws_ratio==max(test2$ws_ratio[test2$group=="Other No Cooling Elec Heat"])][1]
+NO.G.H<-test2$ID[test2$group=="High No Cooling Gas Heat"&test2$ss_ratio==min(test2$ss_ratio[test2$group=="High No Cooling Gas Heat"])][1]
+NO.E.H<-test2$ID[test2$group=="High No Cooling Elec Heat"&test2$ws_ratio==max(test2$ws_ratio[test2$group=="High No Cooling Elec Heat"])][1]
+PART.G.O<-test2$ID[test2$group=="Other Partial AC Gas Heat"&test2$ws_ratio==min(test2$ws_ratio[test2$group=="Other Partial AC Gas Heat"])][1]
+PART.E.O<-test2$ID[test2$group=="Other Partial AC Elec Heat"&test2$ws_ratio==max(test2$ws_ratio[test2$group=="Other Partial AC Elec Heat"])][1]
+PART.G.H<-test2$ID[test2$group=="High Partial AC Gas Heat"&test2$ws_ratio==min(test2$ws_ratio[test2$group=="High Partial AC Gas Heat"])][1]
+PART.E.H<-test2$ID[test2$group=="High Partial AC Elec Heat"&test2$ws_ratio==max(test2$ws_ratio[test2$group=="High Partial AC Elec Heat"])][1]
+
+exs<-c(CAC.G.O,CAC.E.O,CAC.G.H,CAC.E.H,NO.G.O,NO.E.O,NO.G.H,NO.E.H,PART.G.O,PART.E.O,PART.G.H,PART.E.H)
+
+plot_dat<-test2 %>% ungroup() %>% mutate(group=paste(e_cool,e_heat,high_use)) %>% filter(ID%in%exs) %>% select(group,contains("M",ignore.case = FALSE),Shoulder) %>% reshape2::melt(.,id.vars="group")
+
+ex_load<-ggplot(plot_dat %>% filter(variable!="Shoulder"))+
+  geom_hline(data = plot_dat %>% filter(variable=="Shoulder"),aes(yintercept=value),color="black")+
+  geom_hline(data = plot_dat %>% filter(variable=="Shoulder"),aes(yintercept=value*1.4),color="green",alpha=.5)+
+  geom_line(aes(x=as.Date(paste("2018",as.numeric(substr(variable,2,3)),"01",sep="-")),y=value),color="blue")+
+  geom_point(aes(x=as.Date(paste("2018",as.numeric(substr(variable,2,3)),"01",sep="-")),y=value),color="black")+
+  geom_vline(xintercept=c(as.numeric(as.Date("2018-02-15")),as.numeric(as.Date("2018-06-15")),as.numeric(as.Date("2018-08-15")),as.numeric(as.Date("2018-11-15"))),alpha=.5,color="red")+
+  labs(x="Month",y="kWh")+
+  theme(strip.text.y = element_text(angle = 0))+
+  facet_grid(group~.,scales = "free")
+# ggsave(ex_load,filename = "~/desktop/ComEd Plots/example loads.jpg",width = 9, height = 8)
+rm(ex_load)
 
 for(i in unique(test$group)){
   print(i)
@@ -186,8 +226,6 @@ census_pull$med_pov<-(census_pull$pov_300p-census_pull$pov_125p)/census_pull$pov
 census_pull$med_inc<-census_pull$median_income
 census_pull$house_rank<-census_pull$household_size
 census_pull$pov_score<-apply(census_pull %>% select(vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank),1,mean)
-
-
 summary(census_pull)
 
 # census_pull$pov_score<-census_pull$inc_ls10k*10+census_pull$inc_10k15k*8+census_pull$inc_15k25k*6+census_pull$inc_25k35k*5+
@@ -227,7 +265,8 @@ use_LI$med_inc_p<-round(percent_rank(desc(use_LI$med_inc)),2)
 use_LI$Median.Income..Household.Based._p<-round(percent_rank(desc(use_LI$Median.Income..Household.Based.)),2)
 use_LI$Net.Worth_p<-round(percent_rank(desc(use_LI$Net.Worth)),2)
 
-use_LI$LI_score<-apply(use_LI %>% ungroup() %>% select(vlow_inc_p,high_pov_p,med_inc_p,Median.Income..Household.Based._p,Net.Worth_p),
+use_LI$LI_score<-apply(use_LI %>% ungroup() %>% 
+    select(vlow_inc_p,high_pov_p,med_inc_p,Median.Income..Household.Based._p,Net.Worth_p),
   1,FUN = mean,na.rm=TRUE)
 
 summary(use_LI$LI_score[use_LI$LOWINCOME=="Yes"])
@@ -237,54 +276,103 @@ hist(use_LI$LI_score[use_LI$LOWINCOME=="Yes"],breaks = 100)
 hist(use_LI$LI_score[use_LI$LOWINCOME=="No"],breaks = 100)
 hist(use_LI$LI_score,breaks = 100)
 
+LI_score_by_LI<-ggplot(use_LI)+
+  geom_histogram(aes(x=LI_score,fill=LOWINCOME),binwidth = .01)+
+  facet_grid(.~LOWINCOME)+
+  labs(x="Low Income Likelihood",y="Count",title="Low Income Likelihood by Previously Identified as Low Income")
+# ggsave(plot = LI_score_by_LI,filename = "~/desktop/ComEd Plots/li_score by LOWINCOME flag.jpg",width = 9,height = 6)
+rm(LI_score_by_LI)
+
+group_labels<-c(
+  `Central AC Elec Heat`="Central AC Elec Heat\n (n = 373,066)",
+  `Central AC Gas Heat`="Central AC Gas Heat\n (n = 1,683,676)",
+  `No Cooling Elec Heat`="No Cooling Elec Heat\n (n = 198,363)",
+  `No Cooling Gas Heat`="No Cooling Gas Heat\n (n = 90,419)",
+  `Partial AC Elec Heat`="Partial AC Elec Heat\n (n = 229,666)",
+  `Partial AC Gas Heat`="Partial AC Gas Heat\n (n = 473,083)"
+)
+
+high_thresh<-ggplot(use_LI %>% mutate(group=paste(e_cool,e_heat)))+
+  # geom_histogram(aes(x=avg,fill=high_use),binwidth = 10)+
+  geom_histogram(aes(x=avg,fill=high_use,y=..count../sum(..count..)),binwidth = 10)+
+  facet_grid(group~.,scales = "free",labeller = as_labeller(group_labels))+
+  theme(strip.text.y = element_text(angle = 0))+
+  coord_cartesian(xlim=c(0,4000))+
+  scale_y_continuous(labels = scales::percent)+
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank())+
+  labs(x="Average Monthly kWh",y="Proportion",fill="Usage Level",title="High Usage Threshold by Technology Combination")
+# ggsave(plot = high_thresh,filename = "~/desktop/ComEd Plots/use thresh by tech.jpg",width = 9,height = 6)
+rm(high_thresh)
+
 tech_group<-use_LI %>% group_by(e_cool,e_heat) %>% summarise(n=n(),p.with_score=mean(!is.na(LI_score)),p.high_use=mean(high_use=="High"),p.LI=mean(LI_score>=.8,na.rm = TRUE),p.LI_high_use=mean(LI_score>=.8&high_use=="High",na.rm = TRUE))
 
 # write.csv(tech_group,"~/desktop/ComEd Plots/LI by tech group.csv",row.names = FALSE)
 
 zzz<-use_LI %>% filter(LI_score>.8) %>% group_by(e_cool,e_heat) %>% summarise(n=n(),min=min(avg),max=max(avg))
 
-li_plot<-ggplot(use_LI %>% mutate(group=paste(high_use,e_cool,e_heat)))+
+li_plot<-ggplot(use_LI %>% mutate(group=paste(e_cool,e_heat,high_use)))+
   geom_histogram(aes(x=LI_score),bins=100)+
   labs(x="Low Income Likelihood Score",title="Low Income Likelihood Scores for Full Population",y="Count")+
   theme(strip.text.y = element_text(angle = 0))+
-  facet_grid(group~.,scales = "free")
+  facet_grid(group~.)
+# ggsave(plot=li_plot,filename = "~/desktop/ComEd Plots/LI by tech group.jpg",height = 7,width = 8)
+rm(li_plot)
 
-# ggsave(plot=li_plot,filename = "~/desktop/ComEd Plots/High Use by LI.jpg",height = 9,width = 8)
+group_use_labs<-c(
+  `Central AC Elec Heat High`="Central AC Elec Heat High\n (n = 74,619)",
+  `Central AC Gas Heat High`="Central AC Gas Heat High\n (n = 336,775)",
+  `No Cooling Elec Heat High`="No Cooling Elec Heat High\n (n = 39,675)",
+  `No Cooling Gas Heat High`="No Cooling Gas Heat High\n (n = 18,085)",
+  `Partial AC Elec Heat High`="Partial AC Elec Heat High\n (n = 45,937)",
+  `Partial AC Gas Heat High`="Partial AC Gas Heat High\n (n = 94,622)"
+)
 
-pov_plot<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(high_use,e_cool,e_heat)))+
-  geom_histogram(aes(x=LI_score),bins=100)+
-  labs(x="Low Income Likelihood Score Score",title="Low Income Likelihood Scores Among High Users",y="Count")+
+prop_li<-ggplot(use_LI %>% filter(high_use=="High") %>% mutate(group=paste(e_cool,e_heat,high_use)))+
+  geom_histogram(aes(x=LI_score,y=..count../sum(..count..)),bins=100,fill="blue")+
+  labs(x="Low Income Likelihood Score",title="Low Income Likelihood Scores Among High Users",y="Proportion")+
   theme(strip.text.y = element_text(angle = 0))+
-  facet_grid(group~.,scales = "free")
-
-# ggsave(plot=pov_plot,filename = "~/desktop/ComEd Plots/Tech by LI.jpg",height = 5,width = 8)
+  facet_grid(group~.,scales = "free",labeller = as_labeller(group_use_labs))+
+  scale_y_continuous(labels = scales::percent)
+# ggsave(plot=prop_li,filename = "~/desktop/ComEd Plots/LI by high use.jpg",height = 5,width = 8)
+rm(prop_li)
 
 ComEd.LI<-ggplot(use_LI %>% filter(LOWINCOME=="Yes"))+
   geom_histogram(aes(x=LI_score),bins=100)+
   labs(title="Low Income Likelihood Score Among 'LOWINCOME'",x="Low Income Likelihood Score",y="Count")
-
 # ggsave(plot = ComEd.LI,filename = "~/desktop/ComEd Plots/LOWINCOME Low Income Likelihood Score.jpg",height = 9,width = 8)
+rm(ComEd.LI)
 
 ComEd.nLI<-ggplot(use_LI %>% filter(LOWINCOME=="No"))+
   geom_histogram(aes(x=LI_score),bins=100)+
   labs(title="Low Income Likelihood Score Among non 'LOWINCOME'",x="Low Income Likelihood Score",y="Count")
-
 # ggsave(plot = ComEd.nLI,filename = "~/desktop/ComEd Plots/non-LOWINCOME Low Income Likelihood Score.jpg",height = 9,width = 8)
+rm(ComEd.nLI)
 
 tech_use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(high_use,e_cool)))+
   labs(title="Cooling and Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Usage/Cooling Tech")
 # ggsave(plot=tech_use_by_LI,filename = "~/desktop/ComEd Plots/Cooling Usage by LI.jpg",height = 5, width = 8)
+rm(tech_use_by_LI)
 
 use_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=high_use))+
   labs(title="Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Usage")
 # ggsave(plot=use_by_LI,filename = "~/desktop/ComEd Plots/Usage by LI.jpg",height = 5, width = 8)
+rm(use_by_LI)
 
 tech_by_LI<-ggplot(use_LI)+
   geom_bar(position="fill",aes(x=round(LI_score,1),fill=e_cool))+
   labs(title="Cooling by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Cooling Tech")
 # ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/Cooling by LI.jpg",height = 5, width = 8)
+rm(tech_by_LI)
+
+high_use_by_LI<-ggplot(use_LI %>% filter(high_use=="High"))+
+  geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(e_cool,e_heat)))+
+  labs(title="Cooling by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Cooling Tech")
+# ggsave(plot=tech_by_LI,filename = "~/desktop/ComEd Plots/ZZZ.jpg",height = 5, width = 8)
+rm(high_use_by_LI)
 
 heat_agg<-use_LI %>% group_by(LI=round(percent_rank(LI_score),2),Usage=round(percent_rank(avg),2)) %>% summarise(n=n())
 
@@ -293,18 +381,20 @@ cor_plot<-ggplot(use_LI %>% filter(us))+
   scale_fill_gradient(low="white",high = "black")+
   labs(x="Low Income Likelihood Score",y="Usage Percentile",fill="Count")
 # ggsave(plot=cor_plot,filename = "~/desktop/ComEd Plots/cor_use_LI.jpg",height = 5, width = 7)
+rm(cor_plot)
 
-ggplot(use_LI)+
-  geom_boxplot(aes(x=as.factor(round(LI_score,1)),y=avg))+
-  coord_cartesian(ylim=c(0,5000))
+# ggplot(use_LI)+
+#   geom_boxplot(aes(x=as.factor(round(LI_score,1)),y=avg))+
+#   coord_cartesian(ylim=c(0,5000))
 
-ggplot(use_LI)+
-  geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(e_heat,e_cool)))+
-  labs(title="Cooling and Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Heating/Cooling Tech")
+# ggplot(use_LI)+
+#   geom_bar(position="fill",aes(x=round(LI_score,1),fill=paste(e_heat,e_cool)))+
+#   labs(title="Cooling and Usage by Low Income Likelihood Score",x="Low Income Likelihood Score",y="Proportion",fill="Heating/Cooling Tech")
 
 use_tech_distrib<-use_LI %>% 
   filter(!is.na(LI_score)) %>% 
-  group_by(e_heat,e_cool,high_use,li_group=round(LI_score,1)) %>% 
+  group_by(e_heat,e_cool,high_use,li_group=round(LI_score,1)) %>%
+  # group_by(e_heat,e_cool,high_use,li_group=round(percent_rank(LI_score),1)) %>% 
   summarise(n=n()) %>% 
   group_by(high_use,li_group) %>% 
   arrange(-li_group) %>% 
@@ -319,24 +409,51 @@ prop_tech_use<-ggplot(use_tech_distrib)+
   facet_grid(high_use~.)+
   labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Proportion of Technology Combination \nby Low Income Likelihood")
 # ggsave(plot = prop_tech_use,file="~/desktop/ComEd Plots/prop_tech_use.jpg",width=6,height = 4)
+rm(prop_tech_use)
 
 n_tech_use<-ggplot(use_tech_distrib)+
   geom_line(aes(x=li_group,y=n,color=paste(e_heat,e_cool)))+
   facet_grid(high_use~.,scales = "free")+
   labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Count of Technology Combination \nby Low Income Likelihood")
 # ggsave(plot = n_tech_use,file="~/desktop/ComEd Plots/n_tech_use.jpg",width=6,height = 4)
+rm(n_tech_use)
 
 cum_n_tech_use<-ggplot(use_tech_distrib %>% filter(li_group>=.6))+
   geom_line(aes(x=li_group,y=cum_n,color=paste(e_heat,e_cool)))+
   facet_grid(high_use~.,scales = "free")+
   labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Cumulative Count of Technology \nCombination by Low Income Likelihood")
 # ggsave(plot = cum_n_tech_use,file="~/desktop/ComEd Plots/cumulative_n_tech_use.jpg",width=6,height = 4)
+rm(cum_n_tech_use)
 
 cum_prop_tech_use<-ggplot(use_tech_distrib %>% filter(li_group>=.6))+
   geom_line(aes(x=li_group,y=cum_prop,color=paste(e_heat,e_cool)))+
   facet_grid(high_use~.,scales = "free")+
   labs(x="Low Income Likelihood Score",y="Proportion",color="Technology Combination",title="Cumulative Proportion of \nTechnology Combination by Low Income Likelihood")
 # ggsave(plot = cum_prop_tech_use,file="~/desktop/ComEd Plots/cumulative_prop_tech_use.jpg",width=6,height = 4)
+rm(cum_prop_tech_use)
+
+ss_li<-ggplot(use_LI %>% filter(ws_ratio<=10&ss_ratio<=10))+
+  geom_bin2d(aes(x=LI_score,y=ss_ratio),bins=100)+
+  geom_hline(yintercept = c(1.4,.9),color=c("red","white"))+
+  labs(x="Low Income Likelihood",y="Electric Cooling Likelihood",fill="Count",title="Electric Cooling Likelihood by Low Income Likelihood")
+# ggsave(plot = ss_li,filename = "~/desktop/ComEd Plots/ss_ratio by LI.jpg",width = 8,height = 6)
+rm(ss_li)
+
+ws_li<-ggplot(use_LI %>% filter(ws_ratio<=10&ss_ratio<=10))+
+  geom_bin2d(aes(x=LI_score,y=ws_ratio),bins=100)+
+  geom_hline(yintercept = 1.4,color="green")+
+  labs(x="Low Income Likelihood",y="Electric Heating Likelihood",fill="Count",title="Electric Heating Likelihood by Low Income Likelihood")
+# ggsave(plot = ws_li,filename = "~/desktop/ComEd Plots/ws_ratio by LI.jpg",width = 8,height = 6)
+rm(ws_li)
+
+ss_ws<-ggplot(use_LI %>% filter(ws_ratio<=10&ss_ratio<=10))+
+  geom_bin2d(aes(x=ws_ratio,y=ss_ratio),bins=100)+
+  geom_hline(yintercept = c(1.4,.9),color=c("red","white"))+
+  geom_vline(xintercept = 1.4,color="green")+
+  labs(x="Electric Heating Likelihood",y="Electric Cooling Likelihood",fill="Count",title="Electric Heating Likelihood by Electric Cooling Likelihood")
+# ggsave(plot = ss_ws,filename = "~/desktop/ComEd Plots/ss_ratio by ws_ratio.jpg",width = 8,height = 6)
+rm(ss_ws)
+
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
