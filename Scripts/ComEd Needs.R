@@ -19,6 +19,9 @@ census<-read.xlsx("/volumes/Projects/466002 - ComEd Needs Assessment/Confidentia
 # PRIZM<-read.xlsx("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/PRIZM Premier Master Demographic Spreadsheet External 2017 HL.xlsx",sheetName = "Essentials") %>% mutate(code_merge=as.numeric(Full_Code))
 PRIZM<-read.csv("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/PrizmDataForTargeting.csv",stringsAsFactors = FALSE)
 
+# rate codes
+rate_codes<-read.csv("~/desktop/ComEd Rate Decode 101618.csv",stringsAsFactors = FALSE)
+
 # within LI, high users - avg monthly, minimum monthly, cooling in summer, heat with elec, summer/winter sholder ratio
 # Usage aggregation
 use_2016$month<-month(as.Date(paste(as.character(use_2016$MM_ADJ_BILLING_YEARMO),"01"),format="%Y%m%d"))
@@ -247,7 +250,7 @@ pov_score$final_score<-apply(pov_score %>% select(li_bin,score_bin),1,FUN = mean
 table(pov_score$final_score)
 
 # usage and LI
-use_LI<-use_groups %>% left_join(customers %>% select(ID,LOWINCOME, CENSUS_TRACT_CODE,PRIZM.Code) %>% mutate(CENSUS_TRACT_CODE=as.character(CENSUS_TRACT_CODE)),by="ID") %>% 
+use_LI<-use_groups %>% left_join(customers %>% select(ID,LOWINCOME, CENSUS_TRACT_CODE,PRIZM.Code,Tariff.Rate.Typ) %>% mutate(CENSUS_TRACT_CODE=as.character(CENSUS_TRACT_CODE)),by="ID") %>% 
   left_join(pov_score %>% select(geoid,per_lihh_80,vlow_inc,low_inc,high_pov,med_pov,med_inc,house_rank,median_income),by=c("CENSUS_TRACT_CODE"="geoid")) %>% 
   left_join(PRIZM,by=c("PRIZM.Code"="Code"))
 
@@ -454,6 +457,9 @@ ss_ws<-ggplot(use_LI %>% filter(ws_ratio<=10&ss_ratio<=10))+
 # ggsave(plot = ss_ws,filename = "~/desktop/ComEd Plots/ss_ratio by ws_ratio.jpg",width = 8,height = 6)
 rm(ss_ws)
 
+w_rate<-left_join(use_LI,rate_codes,by="Tariff.Rate.Typ")
+rate_count<-w_rate %>% group_by(Tariff.Rate.Typ,Rate.Description.Long,Customer.Class,Accounts.in.File) %>% summarise(elec_heat=sum(e_heat=="Elec Heat"),gas_heat=sum(e_heat=="Gas Heat"))
+# write.csv(rate_count,"~/desktop/rate_counts.csv",row.names = FALSE)
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
