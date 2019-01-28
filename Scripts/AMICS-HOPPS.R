@@ -42,6 +42,200 @@ HVAC_bins<-left_join(
 
 table(is.na(HVAC_bins$cdd_bin))
 
+error_metrics<-function(data,actual,predicted){
+  error_dat<-data %>% select(Site,hour,actual=actual,predicted=predicted) %>% group_by(Site,hour) %>% 
+    summarise(hour_actual=mean(actual),hour_predicted=mean(predicted),sse=sum((predicted-actual)^2, na.rm=TRUE), n_obs = n())
+  
+  error_out<-error_dat %>% summarize(comp=paste(actual,predicted,sep="/"),
+      act=sum(hour_actual), pred=sum(hour_predicted), diff=sum(hour_predicted-hour_actual)/sum(hour_predicted),
+      rmse=sqrt(sum(sse)/sum(n_obs)), cv_rmse=sqrt(sum(sse)/sum(n_obs))*24/sum(hour_actual))
+return(error_out)
+  }
+
+full_metout<-NULL
+
+for (i in 1:7){
+print(i)
+  
+load(paste0("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id",i,".Rdata"))
+load(paste0("~/desktop/AMI HVAC Write Up/AMI HVAC Outputs/amics_ttow_id",i,".Rdata"))
+
+pred_pre_hvac$hour<-as.numeric(pred_pre_hvac$hour)-1
+pred_pre_hvac$hour[pred_pre_hvac$hour==-1]<-23
+
+HVAC_site<-HVAC_bins %>% filter(Site==unique(pred_pre$said)) %>% select(date,hour,sumHVACWh)
+
+sel_id<-unique(pred_pre$said)
+id_plot<-i
+
+# clarify ami/pre-period overlap
+site_pre_start<-min(HVAC_site$date)
+site_pre_end<-max(HVAC_site$date[HVAC_site$sumHVACWh>10&HVAC_site$date<=max(pred_pre$date)])
+
+full_data<-left_join(
+  pred_pre %>% filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>% mutate(date=as.Date(date),hour=as.numeric(hour)),
+  HVAC_site %>% filter(date<site_pre_end,date>site_pre_start) %>% mutate(hvac_est=sumHVACWh/1000/4),
+  by=c("date","hour")
+  ) %>% 
+  left_join(pred_pre_hvac %>% mutate(date=as.Date(date),hour=as.numeric(hour),fit.hvac=fit/4) %>% select(date,hour,fit.hvac),by=c("date","hour")) %>% 
+  filter(!is.na(hvac_est)&!is.na(fit.hvac))
+
+baseline<-full_data %>% filter(day_bin=="001"|day_bin=="000") %>% group_by(weekend,hour) %>% 
+  summarise(n_base=n(),base_amics=mean(fit),base_actual=mean(kwh),base_hvac=mean(hvac_est),base_hvmod=mean(fit.hvac))
+
+full_ws<-full_data %>% left_join(baseline,by=c("weekend","hour")) %>% ungroup() %>% 
+  mutate(ws_amics=fit-base_amics,ws_actual=kwh-base_actual,ws_hvac=hvac_est-base_hvac,ws_hvmod=fit.hvac-base_hvmod,ws_non_hvac=ws_actual-ws_hvac)
+
+ws_agg<-full_ws %>% group_by(Site=i,hour,weekend) %>% summarise(n=n(),ws_amics=mean(ws_amics),ws_actual=mean(ws_actual),ws_hvac=mean(ws_hvac),ws_hvmod=mean(ws_hvmod),ws_non_hvac=mean(ws_non_hvac))
+
+ws_amics.ws_hvac<-error_metrics(ws_agg,"ws_hvac","ws_amics")
+
+ws_amics.ws_actual<-error_metrics(ws_agg,"ws_actual","ws_amics")
+
+ws_actual.ws_hvac<-error_metrics(ws_agg,"ws_hvac","ws_actual")
+
+ws_hvac.ws_hvmod<-error_metrics(ws_agg,"ws_hvac","ws_hvmod")
+
+met_out<-bind_rows(ws_amics.ws_hvac,ws_amics.ws_actual,ws_actual.ws_hvac,ws_hvac.ws_hvmod)
+
+full_metout<-bind_rows(full_metout,met_out)
+# write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
+
+ws_plot<-ggplot(ws_agg %>% ungroup() %>% select(-n,-Site) %>% reshape2::melt(id.vars=c("hour","weekend")))+
+  geom_line(aes(x=hour,y=value,color=variable))+
+  facet_grid(.~weekend)+
+  labs(color="Source",y="WS Component",x="Hour/Day Type",title=paste0("Site ",unique(pred_pre$said),"/",i))+
+  scale_color_manual(
+    breaks=c("ws_actual","ws_hvac","ws_amics","ws_hvmod","ws_non_hvac"),
+    labels=c("WS Actual","WS HVAC","WS AMICS","WS Mod. HVAC","WS non-HVAC"),
+    values=c("blue","gray50","red","orange","green"))
+
+# ggsave(plot = ws_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/plot_",i,".jpg"))
+
+ws_agg2<-full_ws %>% group_by(hour) %>% summarise(n=n(),ws_amics=mean(ws_amics),ws_actual=mean(ws_actual),ws_hvac=mean(ws_hvac),ws_hvmod=mean(ws_hvmod),ws_non_hvac=mean(ws_non_hvac))
+
+ws_plot<-ggplot(ws_agg2 %>% select(-n) %>% reshape2::melt(id.vars=c("hour")))+
+# ws_plot<-ggplot(ws_agg2 %>% select(hour,ws_amics,ws_hvac) %>% reshape2::melt(id.vars=c("hour")))+
+  geom_line(aes(x=hour,y=value,color=variable))+
+  geom_hline(color="green",aes(yintercept=mean(value[variable=="ws_non_hvac"])))+
+  # facet_grid(.~weekend)+
+  labs(color="Data",y="Average Hourly Weather-Sensitive Change",x="Hour")+
+  scale_color_manual(
+    breaks=c("ws_actual","ws_hvac","ws_amics","ws_hvmod","ws_non_hvac"),
+    labels=c("WS Actual","WS HVAC","WS AMICS","WS Mod. HVAC","WS non-HVAC"),
+    values=c("red","blue","gray50","orange","green"))
+
+# ggsave(plot = ws_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/plot_",i,".jpg"))
+
+avg_daily<-pred_pre %>%
+  filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>%
+  mutate(date=as.Date(date),hour=as.numeric(hour)) %>% 
+  group_by(date) %>% summarise(daily=sum(kwh))
+
+# print(mean(avg_daily$daily))
+# print(error_metrics(data=pred_pre,actual = "kwh",predicted = "fit"))
+# print(error_metrics(data=pred_pre_hvac,actual = "kwh",predicted = "fit"))
+ws_data<-full_ws %>% filter(date=="2016-06-20") %>% group_by(hour) %>% 
+    summarise(base=mean(base_actual),actual=mean(kwh))
+
+ws_calc<-ggplot(ws_data)+
+  geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="red",alpha=.3)+
+  # geom_ribbon(aes(x=hour,ymin=0,ymax=base),fill="black",alpha=.3)+
+  geom_line(data=ws_data %>% reshape2::melt(id.vars="hour"),aes(x=hour,y=value,color=variable))+
+  scale_color_manual(
+    breaks=c("base","actual"),
+    labels=c("Baseline","Actual Usage"),
+    values=c("black","red")
+  )+
+  labs(color="Data",y="kWh",x="Hour")
+
+ggplot(full_ws)+
+  geom_line(aes(x=readdate,y=kwh),color="red")+
+  geom_line(aes(x=readdate,y=fit),color="blue")+
+  geom_line(aes(x=readdate,y=fit.hvac),color="orange")+
+  geom_line(aes(x=readdate,y=hvac_est),color="gray")
+
+ggplot(full_ws)+
+  # geom_line(aes(x=readdate,y=ws_actual),color="red")+
+  # geom_line(aes(x=readdate,y=ws_amics),color="blue")+
+  geom_line(aes(x=readdate,y=ws_hvmod),color="orange")+
+  geom_line(aes(x=readdate,y=ws_hvac),color="gray")+
+  labs(x=NULL)
+
+ggplot(full_ws %>% filter(date(readdate)>"2016-10-01"))+
+  geom_line(aes(x=readdate,y=base_actual),color="green")+
+  geom_line(aes(x=readdate,y=kwh),color="red")
+  geom_line(aes(x=readdate,y=base_actual+ws_actual),color="red")
+  
+zzz<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),actual=mean(kwh),base=mean(base_actual),ws=mean(ws_actual))
+yyy<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),amics=mean(fit),base_amics=mean(base_amics),ws_amics=mean(ws_amics))
+fff<-left_join(zzz,yyy)
+fff$off<-fff$ws-fff$ws_amics
+fff$p<-fff$off/fff$ws
+
+AMICS2<-full_ws %>% group_by(day_bin,hour) %>% mutate(amics2=mean(kwh))
+
+ggplot(AMICS2 %>% filter(day_bin=="100"))+
+  geom_line(aes(x=readdate,y=kwh),color="red")+
+  geom_hline(yintercept = mean(AMICS2$kwh[AMICS2$day_bin=="100"]),color="red")+
+  geom_line(aes(x=readdate,y=fit),color="blue")+
+  geom_hline(yintercept=mean(AMICS2$fit[AMICS2$day_bin=="100"]),color="blue")+
+  labs(title=NULL)
+
+# print(ws_plot)
+}
+break
+break
+
+# write.csv(full_metout,"~/desktop/AMI HVAC Write Up/Full Error Metric.csv",row.names = FALSE)
+
+plot_ttow <- function(x=dta_test, pre_test=TRUE, coord=c(18, 7), method="TTOW", color_labs=NULL){
+  # x$weekend <- ifelse(x$weekend==0, "Weekend", "Weekday")
+  dta_plot <- x %>% select(-readdate) %>% mutate(hour=substr(tow, 3, 4)) %>%
+    group_by(said, hour) %>% summarize(actual=mean(kwh), predicted=mean(fit), lwr=mean(lwr), upr=mean(upr),
+                                       sse=sum((fit-kwh)^2, na.rm=TRUE), n_obs = n())
+  dta_plot$hour <- as.numeric(dta_plot$hour)
+  pred_lab <- sprintf("Predicted (%s model %s)", method, ifelse(pre_test==TRUE, "sample pre", "est of post"))
+  scale_ht <- (max(dta_plot$upr) - min(dta_plot$upr))/4
+  if (is.null(color_labs)){
+    color_labs <- c("Actual", pred_lab)
+  }
+  plot <- ggplot(data=dta_plot) +
+    labs(title=sprintf("%s load shape for ID #%d", ifelse(pre_test==TRUE, "Pre-period HO", "Post-period"), id_plot), y="Energy Usage (kWh)", x="Hour of Day", color=NULL) +
+    theme(legend.position="bottom") +
+    geom_line(aes(x=hour, y=predicted, group=said, color=color_labs[2])) +
+    geom_ribbon(aes(x=hour, ymax=upr, ymin=lwr, group=said), fill="red", alpha=0.1) +
+    geom_line(aes(x=hour, y=actual, group=said, color=color_labs[1])) +
+    scale_colour_manual("", breaks = color_labs, values = c("blue", "red")) +
+    annotate("rect", xmin=coord[1]-5, xmax=coord[1]+5, ymin=coord[2]-scale_ht, ymax=coord[2]+scale_ht, alpha=1, fill="white")  #+
+    #facet_grid(.~weekend)
+  if (pre_test==TRUE){
+    day <- dta_plot %>% summarize(
+      act=sum(actual), pred=sum(predicted), diff=sum(predicted-actual)*100/sum(predicted),
+      rmse=sqrt(sum(sse)/sum(n_obs)), cv_rmse=sqrt(sum(sse)/sum(n_obs))*24/sum(actual))
+    plot +  annotate("text", label=paste(
+      paste("Actual Daily kWh:",round(day$act, 2)),
+      paste("Predicted Daily kWh:",round(day$pred, 2)),
+      paste("% Difference: ", round(day$diff, 1), "%", sep=""),
+      paste("RMSE:", round(day$rmse,2)),
+      paste("CV(RMSE): ", round(day$cv_rmse,2), sep=""),
+      sep="\n"),  x=coord[1], y=coord[2], color="black", size=3)
+  } else {
+    plot + annotate("text", label=paste(
+      paste("Actual Daily kWh:",round(sum(dta_plot$actual), 2)),
+      paste("Predicted Daily kWh:",round(sum(dta_plot$predicted), 2)),
+      paste("Savings kWh: ", round(sum(dta_plot$predicted-dta_plot$actual), 2)),
+      paste("Savings %: ", round(sum(dta_plot$predicted-dta_plot$actual)*100/sum(dta_plot$predicted), 1), "%", sep=""),
+      # paste("CV(RMSE): ", round(sqrt(sum(savings$sse)/sum(savings$n_obs))/sum(savings$wt.act),2), sep=""),
+      sep="\n"),  x=coord[1], y=coord[2], color="black", size=3)
+  }
+}
+
+zzz<-pred_pre_hvac %>% mutate(fit=fit/4,kwh=kwh/4,lwr=lwr/4,upr=upr/4)
+plot_ttow(subset(zzz, is.na(fit)==FALSE), pre_test=TRUE, coord=c(13, 2), "AMICS")
+
+zzz<-pred_ho %>% select(readdate,kwh) %>% left_join(pred_ho_hvac %>% select(readdate,kwh),by="readdate")
+
 for (i in 1:7){
 print(i)
   
@@ -106,7 +300,7 @@ ggplot(ws)+
   facet_grid(.~weekend.x)
 
 
-ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/1b. Weather Sensitivity (cdd) by Hour.jpg"))
+# ggsave(filename = paste0("~/desktop/HOPPS-AMI Plots/",i,"/1b. Weather Sensitivity (cdd) by Hour.jpg"))
 
 
 ggplot(full_data %>% filter(minute(readdate)==0))+
@@ -240,5 +434,6 @@ ggplot()+
   geom_line(data=left_join(low_hvac,high_hvac,by="hour"),aes(x=hour,y=(mean_kWh.y-mean_kWh.x)),color="blue")+
   geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")+
   labs(y="kWh",title="kWh diff cdd4 cdd0")
+
 
 
