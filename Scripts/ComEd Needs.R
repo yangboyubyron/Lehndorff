@@ -458,8 +458,53 @@ ss_ws<-ggplot(use_LI %>% filter(ws_ratio<=10&ss_ratio<=10))+
 rm(ss_ws)
 
 w_rate<-left_join(use_LI,rate_codes,by="Tariff.Rate.Typ")
+w_rate$SFMF<-"NOT DEFINED"
+w_rate$SFMF[grepl("Multi",w_rate$Customer.Class)]<-"MF"
+w_rate$SFMF[grepl("Single",w_rate$Customer.Class)]<-"SF"
+table(w_rate$SFMF)
+
+thresh_SFMF<-w_rate %>% 
+  group_by(SFMF,Heating=e_heat,Cooling=e_cool!="No Cooling") %>% 
+  summarise(n=n(),Avg.kWh.80=quantile(avg,probs = .8),`Percent ss above 1.1`=mean(ss_ratio>1.1),`Percent ws above 1.1`=mean(ws_ratio>1.1))
+# write.csv(thresh_SFMF,"~/desktop/SFMF_counts.csv",row.names = FALSE)
+
+load_shapes<-w_rate %>% 
+  group_by(SFMF,e_heat,e_cool) %>% 
+  summarise(M01=mean(M01),M02=mean(M02),M03=mean(M03),M04=mean(M04),M05=mean(M05),M06=mean(M06),
+    M07=mean(M07),M08=mean(M08),M09=mean(M09),M10=mean(M10),M11=mean(M11),M12=mean(M12)) %>% 
+  reshape2::melt(id.vars=c("SFMF","e_heat","e_cool")) %>% mutate(Month=as.numeric(gsub("M","",variable)),Group=paste(e_heat,e_cool))
+
+load_count<-w_rate %>% 
+  group_by(e_heat,e_cool) %>% 
+  summarise(MF=sum(SFMF=="MF"),SF=sum(SFMF=="SF"))
+# write.csv(load_count,"~/desktop/load_counts.csv",row.names = FALSE)
+
+load_plot<-ggplot(load_shapes)+
+  geom_line(aes(x=Month,y=value,group=Group,color=Group))+
+  facet_grid(Group~SFMF)+
+  theme(
+    strip.text.y = element_text(angle = 0)
+  )+
+  scale_x_continuous(breaks = seq(1,12,1))+
+  guides(color=FALSE)+
+  labs(y="kWh", title="Load Shape by House Type and Technology")
+# ggsave(plot = load_plot,filename = "~/desktop/ComEd Plots/Load Shapes.jpg",width = 6,height = 10)
+
 rate_count<-w_rate %>% group_by(Tariff.Rate.Typ,Rate.Description.Long,Customer.Class,Accounts.in.File) %>% summarise(elec_heat=sum(e_heat=="Elec Heat"),gas_heat=sum(e_heat=="Gas Heat"))
 # write.csv(rate_count,"~/desktop/rate_counts.csv",row.names = FALSE)
+
+rate_count2<-w_rate %>% filter(avg>=quantile(w_rate$avg,probs = .8)) %>% group_by(SFMF,e_heat,e_cool) %>% summarise(`Count above 923.5 kWh`=n(),`And LI > .8`=sum(LI_score>=.8,na.rm=TRUE))
+# write.csv(rate_count2,"~/desktop/Uniform Threshold.csv",row.names = FALSE)
+
+LI_use_quant<-use_LI %>% group_by(LILS=round(LI_score,1)) %>% 
+  summarise(n=n(),`80th %`=quantile(avg,probs = .8),`85th %`=quantile(avg,probs = .85),`90th %`=quantile(avg,probs = .9))
+# write.csv(LI_use_quant,"~/desktop/Quantile by LILS.csv",row.names = FALSE)
+
+w_rate %>% filter(LI_score>=.8) %>% ungroup() %>% summarise(`80th %`=quantile(avg,probs = .8),`85th %`=quantile(avg,probs = .85),`90th %`=quantile(avg,probs = .9))
+
+LI_quant_pop<-w_rate %>% filter(LI_score>=.8) %>% group_by(SFMF,e_heat) %>% 
+  summarise(`Total LI`=n(),`Above 676.25`=sum(avg>676.25),`Above 761.25`=sum(avg>761.25),`Above 878.5`=sum(avg>878.5))
+# write.csv(LI_quant_pop,"~/desktop/HU LI by House Heat.csv",row.names = FALSE)
 
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
