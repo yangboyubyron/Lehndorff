@@ -774,9 +774,10 @@ counts<-final_data %>%
   group_by(naicsgroup,recent_part) %>% 
   summarise(sum(adj))
 
-colnames(final_data)<-c("et_siteid","Business Sector","kwh2017","therms2017","Fuel Type","Electric Size","Gas Size","Overall Size","County","Region","Participation","Program Track","Most Recent Participation Date","Participation Status","Size/Participation","Weight")
+colnames(final_data)<-c("et_siteid","Business Sector","kwh2017","therms2017","Fuel Type","Electric Usage","Gas Usage","Overall Usage","County","Region","Participation","Program Track","Most Recent Participation Date","Participation Status","Size/Participation","Weight")
 
 # write.csv(final_data,"/volumes/Projects/430011 - ETO Existing Buildings/Data/Analysis_Dataset.csv",row.names = FALSE)
+# write.csv(industries,"/volumes/Projects/430011 - ETO Existing Buildings/Data/State Employment Data.csv",row.names = FALSE)
 
 final_data<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/Analysis_Dataset.csv",stringsAsFactors = FALSE)
 
