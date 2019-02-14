@@ -66,6 +66,9 @@ use_agg$sw_ratio<-use_agg$S_JA/use_agg$W_DJF
 summary(use_agg)
 
 usable<-use_agg %>% filter((min>0|Shoulder>0)&!is.na(avg)&!is.na(S_JA)&!is.na(W_DJF)&avg<24000)
+drop<-use_agg %>% filter(!((min>0|Shoulder>0)&!is.na(avg)&!is.na(S_JA)&!is.na(W_DJF)&avg<24000))
+drop2<-use_agg %>% filter(!(!is.na(S_JA)&!is.na(W_DJF)&avg<24000))
+
 quantile(usable$ws_ratio,probs = c(.1,.25,.5,.75,.9),na.rm = TRUE)
 
 hist(usable$ss_ratio[usable$ss_ratio<quantile(usable$ss_ratio,probs = .99)],breaks = 100)
@@ -467,6 +470,10 @@ thresh_SFMF<-w_rate %>%
   group_by(SFMF,Heating=e_heat,Cooling=e_cool!="No Cooling") %>% 
   summarise(n=n(),Avg.kWh.80=quantile(avg,probs = .8),`Percent ss above 1.1`=mean(ss_ratio>1.1),`Percent ws above 1.1`=mean(ws_ratio>1.1))
 # write.csv(thresh_SFMF,"~/desktop/SFMF_counts.csv",row.names = FALSE)
+quantile(w_rate$avg[w_rate$SFMF=="SF"],probs = seq(.7,.8,.01))
+quantile(w_rate$avg[w_rate$SFMF=="MF"],probs = seq(.9,1,.01))
+quantile(w_rate$avg[w_rate$SFMF=="SF"&w_rate$LI_score>.8&!is.na(w_rate$LI_score)],probs = seq(.8,.9,.01))
+quantile(w_rate$avg[w_rate$SFMF=="MF"&w_rate$LI_score>.8&!is.na(w_rate$LI_score)],probs = seq(.9,1,.01))
 
 load_shapes<-w_rate %>% 
   group_by(SFMF,e_heat,e_cool) %>% 
@@ -490,10 +497,19 @@ load_plot<-ggplot(load_shapes)+
   labs(y="kWh", title="Load Shape by House Type and Technology")
 # ggsave(plot = load_plot,filename = "~/desktop/ComEd Plots/Load Shapes.jpg",width = 6,height = 10)
 
-rate_count<-w_rate %>% group_by(Tariff.Rate.Typ,Rate.Description.Long,Customer.Class,Accounts.in.File) %>% summarise(elec_heat=sum(e_heat=="Elec Heat"),gas_heat=sum(e_heat=="Gas Heat"))
+rate_count<-w_rate %>% 
+  group_by(Tariff.Rate.Typ,Rate.Description.Long,Customer.Class,Accounts.in.File) %>% 
+  summarise(elec_heat=sum(e_heat=="Elec Heat"),gas_heat=sum(e_heat=="Gas Heat"))
 # write.csv(rate_count,"~/desktop/rate_counts.csv",row.names = FALSE)
 
-rate_count2<-w_rate %>% filter(avg>=quantile(w_rate$avg,probs = .8)) %>% group_by(SFMF,e_heat,e_cool) %>% summarise(`Count above 923.5 kWh`=n(),`And LI > .8`=sum(LI_score>=.8,na.rm=TRUE))
+hu_tab<-quantile(w_rate$avg,probs = .8)
+rate_count2<-w_rate %>% 
+  # filter(avg>=quantile(w_rate$avg,probs = .8)) %>% 
+  group_by(SFMF,e_heat,e_cool) %>% 
+  summarise(
+    `Count above 923.5 kWh`=sum(avg>=hu_tab),
+    `Count LILS > .8`=sum(LI_score>=.8,na.rm=TRUE),
+    `Count Both`=sum(LI_score>=.8&avg>=hu_tab,na.rm=TRUE))
 # write.csv(rate_count2,"~/desktop/Uniform Threshold.csv",row.names = FALSE)
 
 LI_use_quant<-use_LI %>% group_by(LILS=round(LI_score,1)) %>% 
@@ -509,6 +525,7 @@ LI_quant_pop<-w_rate %>% filter(LI_score>=.8) %>% group_by(SFMF,e_heat) %>%
 modeling_data<-left_join(customers,agg_2016,by="ID") %>% left_join(agg_2017,"ID") %>% left_join(census,"ID") %>% left_join(PRIZM,by=c("PRIZM.Code"="code_merge"))
 table(is.na(modeling_data$Full_Code))
 
+quantile(use_LI$avg[use_LI$LI_score>=.8&!is.na(use_LI$LI_score)],probs = c(.8,.85,.9))
 
 test<-usable %>% select(ID,contains("M",ignore.case = FALSE)) %>% reshape2::melt(.,id.vars="ID") %>% 
   # group_by(ID) %>% mutate(rank=rank(-as.numeric(value)))
