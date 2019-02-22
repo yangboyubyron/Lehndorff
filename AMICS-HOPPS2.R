@@ -78,6 +78,7 @@ error_metrics<-function(data,actual,predicted,Site=i,plot=FALSE){
 
 full_metout<-NULL
 full_compout<-NULL
+data_stats<-NULL
 
 for (i in 1:7){
 print(i)
@@ -101,8 +102,15 @@ id_plot<-i
 
 full_data<-left_join(
   pred_pre %>% 
-    mutate(date=as.Date(date),hour=as.numeric(hour)),
-  pred_pre_hvac %>% mutate(date=as.Date(date2),hour=as.numeric(hour2),hvac_est=kwh/4,fit.hvac=fit/4) %>% select(date,hour,hvac_est,fit.hvac),by=c("date","hour")) %>% 
+    mutate(date=as.Date(date),hour=as.numeric(hour)) %>% 
+    # group_by(date,hour) %>% summarise(kwh=sum(kwh),fit=sum(fit)) %>% 
+    filter(),
+  pred_pre_hvac %>% 
+    mutate(date=as.Date(date2),hour=as.numeric(hour2),hvac_est=kwh/4,fit.hvac=fit/4) %>%
+    # mutate(date=as.Date(date2),hour=as.numeric(hour2),hvac_est=kwh,fit.hvac=fit) %>% 
+    select(date,hour,hvac_est,fit.hvac),
+    # select(date,hour,day_bin,weekend,hvac_est,fit.hvac),
+  by=c("date","hour")) %>% 
   filter()
 
 baseline<-full_data %>% filter(day_bin=="001"|day_bin=="000") %>% group_by(weekend,hour) %>% 
@@ -118,18 +126,37 @@ ws_agg2<-full_ws %>% group_by(Site=i,hour) %>%
   # summarise(n=n(),ws_amics=mean(ws_amics,na.rm = FALSE),ws_actual=mean(ws_actual,na.rm = FALSE),ws_hvac=mean(ws_hvac,na.rm = FALSE),ws_hvmod=mean(ws_hvmod,na.rm = FALSE),ws_non_hvac=mean(ws_non_hvac,na.rm = FALSE))
   summarise(n=n(),fit=mean(fit),kwh=mean(kwh),ws_amics=mean(ws_amics,na.rm = TRUE),ws_actual=mean(ws_actual,na.rm = TRUE),ws_hvac=mean(ws_hvac,na.rm = TRUE),ws_hvmod=mean(ws_hvmod,na.rm = TRUE),ws_non_hvac=mean(ws_non_hvac,na.rm = TRUE))
 
-ws_plot<-ggplot(ws_agg2 %>% ungroup() %>% select(-n,-Site,-fit,-kwh) %>% reshape2::melt(id.vars=c("hour")))+
-# ws_plot<-ggplot(ws_agg2 %>% select(hour,ws_amics,ws_hvac) %>% reshape2::melt(id.vars=c("hour")))+
+# ws_plot<-ggplot(ws_agg2 %>% ungroup() %>% select(-n,-Site,-fit,-kwh) %>% reshape2::melt(id.vars=c("hour")))+
+ws_plot<-ggplot(ws_agg2 %>% ungroup() %>% select(hour,ws_amics,ws_hvac) %>% reshape2::melt(id.vars=c("hour")))+
   geom_line(aes(x=hour,y=value,color=variable))+
   geom_hline(color="green",aes(yintercept=mean(value[variable=="ws_non_hvac"])))+
   # facet_grid(.~weekend)+
-  labs(color="Data",y="Average Hourly Weather-Sensitive Change",x="Hour")+
+  labs(color="Data",y="Average Hourly Weather-Sensitive Change (kWh)",x="Hour")+
   scale_color_manual(
     breaks=c("ws_actual","ws_hvac","ws_amics","ws_hvmod","ws_non_hvac"),
     labels=c("WS Actual","WS HVAC","WS AMICS","WS Mod. HVAC","WS non-HVAC"),
     values=c("red","blue","gray50","orange","green"))
 
 # ggsave(plot = ws_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/plot_",i,".jpg"))
+
+comp_data<-full_ws %>% 
+  group_by(hour) %>% 
+  summarise(ws_hvac=mean(ws_hvac),ws_non_hvac=mean(ws_non_hvac),
+    non_ws_hvac=mean(base_hvac),non_non=mean(base_actual-base_hvac),
+    ws_amics=mean(ws_amics),base_amics=mean(base_amics),
+    base=mean(base_actual),actual=mean(kwh),total=ws_hvac+ws_non_hvac+non_ws_hvac+non_non)
+
+comp_plot<-ggplot(comp_data %>% select(hour,ws_hvac,ws_non_hvac,non_ws_hvac,non_non) %>% reshape2::melt(id.vars="hour"))+
+  geom_bar(aes(x=hour,y=value,fill=variable),position = "stack",stat="identity")+
+  scale_fill_manual(
+    breaks=c("ws_hvac","ws_non_hvac","non_ws_hvac","non_non"),
+    labels=c("WS HVAC","WS non-HVAC","Baseline HVAC","Baseline non-HVAC"),
+    values=c("blue","red","gray50","black")
+  )+
+  labs(y="kWh",x="Hour",fill="Component")
+
+# ggsave(plot = comp_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/compplot_",i,".jpg"))
+
 
 ws_amics.ws_hvac<-error_metrics(full_ws,"ws_hvac","ws_amics")
 
@@ -156,13 +183,22 @@ comp_out<-full_ws %>% summarise(
   `WS AMICS`=mean(ws_amics),
   Error=`WS HVAC`-`WS AMICS`)
 
+stats_out<-full_ws %>% 
+  summarise(Site=i,
+    min.date=min(date),
+    max.date=max(date),
+    total.days=n_distinct(date),
+    base.days=n_distinct(date[(day_bin=="001"|day_bin=="000")]))
+
 full_metout<-bind_rows(full_metout,met_out)
 full_compout<-bind_rows(full_compout,comp_out)
+data_stats<-bind_rows(data_stats,stats_out)
 # write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
 
 }
 
 # write.csv(full_metout,"~/desktop/AMI HVAC Write Up/Full Error Metric.csv",row.names = FALSE)
-write.csv(full_compout,"~/desktop/AMI HVAC Write Up/Full Components.csv",row.names = FALSE)
+# write.csv(full_compout,"~/desktop/AMI HVAC Write Up/Full Components.csv",row.names = FALSE)
+# write.csv(data_stats,"~/desktop/AMI HVAC Write Up/Data Stats.csv",row.names = FALSE)
 
 error_metrics(full_ws,"ws_hvac","ws_amics",plot=TRUE)
