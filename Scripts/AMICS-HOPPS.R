@@ -42,13 +42,36 @@ HVAC_bins<-left_join(
 
 table(is.na(HVAC_bins$cdd_bin))
 
-error_metrics<-function(data,actual,predicted){
-  error_dat<-data %>% select(Site,hour,actual=actual,predicted=predicted) %>% group_by(Site,hour) %>% 
-    summarise(hour_actual=mean(actual),hour_predicted=mean(predicted),sse=sum((predicted-actual)^2, na.rm=TRUE), n_obs = n())
+error_metrics<-function(data,actual,predicted,Site=i){
+ error_out<- data %>% select(hour,Actual=actual,Predicted=predicted) %>% 
+    mutate(avg=mean(Actual, na.rm=TRUE)) %>%
+    summarize(
+      comp=paste(actual,predicted,sep="/"),
+      Site=Site,
+      TSS=sum((Actual-avg)^2),
+      ESS=sum((Predicted-avg)^2),
+      R_sq=ESS/TSS, n=n(),
+      SSE=sum((Predicted-Actual)^2),
+      RMSE=sqrt(SSE/(n-23)),
+      CV_RMSE=RMSE/mean(Actual),
+      NMBE=sum(Predicted-avg)/sum(avg))
   
-  error_out<-error_dat %>% summarize(comp=paste(actual,predicted,sep="/"),
-      act=sum(hour_actual), pred=sum(hour_predicted), diff=sum(hour_predicted-hour_actual)/sum(hour_predicted),
-      rmse=sqrt(sum(sse)/sum(n_obs)), cv_rmse=sqrt(sum(sse)/sum(n_obs))*24/sum(hour_actual))
+  # error_dat<-data %>% 
+  #   select(Site,hour,actual=actual,predicted=predicted) %>% 
+  #   group_by(Site,hour) %>% 
+  #   summarise(
+  #     hour_actual=mean(actual),
+  #     hour_predicted=mean(predicted),
+  #     sse=sum((predicted-actual)^2, na.rm=TRUE), 
+  #     n_obs = n())
+  # 
+  # error_out<-error_dat %>% 
+  #   summarize(comp=paste(actual,predicted,sep="/"),
+  #     act=sum(hour_actual), 
+  #     pred=sum(hour_predicted),
+  #     diff=sum(hour_predicted-hour_actual)/sum(hour_predicted),
+  #     rmse=sqrt(sum(sse)/sum(n_obs)), 
+  #     cv_rmse=sqrt(sum(sse)/sum(n_obs))/mean(hour_actual))
 return(error_out)
   }
 
@@ -60,7 +83,9 @@ print(i)
 load(paste0("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id",i,".Rdata"))
 load(paste0("~/desktop/AMI HVAC Write Up/AMI HVAC Outputs/amics_ttow_id",i,".Rdata"))
 
+pred_pre_hvac$date<-as.Date(pred_pre_hvac$date)
 pred_pre_hvac$hour<-as.numeric(pred_pre_hvac$hour)-1
+pred_pre_hvac$date[pred_pre_hvac$hour==-1]<-pred_pre_hvac$date[pred_pre_hvac$hour==-1]-1
 pred_pre_hvac$hour[pred_pre_hvac$hour==-1]<-23
 
 HVAC_site<-HVAC_bins %>% filter(Site==unique(pred_pre$said)) %>% select(date,hour,sumHVACWh)
@@ -73,33 +98,28 @@ site_pre_start<-min(HVAC_site$date)
 site_pre_end<-max(HVAC_site$date[HVAC_site$sumHVACWh>10&HVAC_site$date<=max(pred_pre$date)])
 
 full_data<-left_join(
-  pred_pre %>% filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>% mutate(date=as.Date(date),hour=as.numeric(hour)),
+  pred_pre %>% 
+    # filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>% 
+    mutate(date=as.Date(date),hour=as.numeric(hour)),
   HVAC_site %>% filter(date<site_pre_end,date>site_pre_start) %>% mutate(hvac_est=sumHVACWh/1000/4),
   by=c("date","hour")
   ) %>% 
   left_join(pred_pre_hvac %>% mutate(date=as.Date(date),hour=as.numeric(hour),fit.hvac=fit/4) %>% select(date,hour,fit.hvac),by=c("date","hour")) %>% 
-  filter(!is.na(hvac_est)&!is.na(fit.hvac))
+  # filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start)
+  # filter(!is.na(hvac_est)&!is.na(fit.hvac))
+  filter()
 
 baseline<-full_data %>% filter(day_bin=="001"|day_bin=="000") %>% group_by(weekend,hour) %>% 
-  summarise(n_base=n(),base_amics=mean(fit),base_actual=mean(kwh),base_hvac=mean(hvac_est),base_hvmod=mean(fit.hvac))
+  summarise(n_base=n(),n_hvac=sum(!is.na(hvac_est)),base_amics=mean(fit,na.rm = TRUE),base_actual=mean(kwh,na.rm = TRUE),base_hvac=mean(hvac_est,na.rm = TRUE),base_hvmod=mean(fit.hvac,na.rm = TRUE))
 
-full_ws<-full_data %>% left_join(baseline,by=c("weekend","hour")) %>% ungroup() %>% 
+full_ws<-full_data %>% 
+  # filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>%
+  filter(!is.na(hvac_est)&!is.na(fit.hvac)) %>%
+  left_join(baseline,by=c("weekend","hour")) %>% ungroup() %>% 
   mutate(ws_amics=fit-base_amics,ws_actual=kwh-base_actual,ws_hvac=hvac_est-base_hvac,ws_hvmod=fit.hvac-base_hvmod,ws_non_hvac=ws_actual-ws_hvac)
 
-ws_agg<-full_ws %>% group_by(Site=i,hour,weekend) %>% summarise(n=n(),ws_amics=mean(ws_amics),ws_actual=mean(ws_actual),ws_hvac=mean(ws_hvac),ws_hvmod=mean(ws_hvmod),ws_non_hvac=mean(ws_non_hvac))
-
-ws_amics.ws_hvac<-error_metrics(ws_agg,"ws_hvac","ws_amics")
-
-ws_amics.ws_actual<-error_metrics(ws_agg,"ws_actual","ws_amics")
-
-ws_actual.ws_hvac<-error_metrics(ws_agg,"ws_hvac","ws_actual")
-
-ws_hvac.ws_hvmod<-error_metrics(ws_agg,"ws_hvac","ws_hvmod")
-
-met_out<-bind_rows(ws_amics.ws_hvac,ws_amics.ws_actual,ws_actual.ws_hvac,ws_hvac.ws_hvmod)
-
-full_metout<-bind_rows(full_metout,met_out)
-# write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
+ws_agg<-full_ws %>% group_by(Site=i,hour,weekend) %>% 
+  summarise(n=n(),ws_amics=mean(ws_amics,na.rm = FALSE),ws_actual=mean(ws_actual,na.rm = FALSE),ws_hvac=mean(ws_hvac,na.rm = FALSE),ws_hvmod=mean(ws_hvmod,na.rm = FALSE),ws_non_hvac=mean(ws_non_hvac,na.rm = FALSE))
 
 ws_plot<-ggplot(ws_agg %>% ungroup() %>% select(-n,-Site) %>% reshape2::melt(id.vars=c("hour","weekend")))+
   geom_line(aes(x=hour,y=value,color=variable))+
@@ -112,10 +132,12 @@ ws_plot<-ggplot(ws_agg %>% ungroup() %>% select(-n,-Site) %>% reshape2::melt(id.
 
 # ggsave(plot = ws_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/plot_",i,".jpg"))
 
-ws_agg2<-full_ws %>% group_by(hour) %>% summarise(n=n(),ws_amics=mean(ws_amics),ws_actual=mean(ws_actual),ws_hvac=mean(ws_hvac),ws_hvmod=mean(ws_hvmod),ws_non_hvac=mean(ws_non_hvac))
+ws_agg2<-full_ws %>% group_by(Site=i,hour) %>% 
+  # summarise(n=n(),ws_amics=mean(ws_amics,na.rm = FALSE),ws_actual=mean(ws_actual,na.rm = FALSE),ws_hvac=mean(ws_hvac,na.rm = FALSE),ws_hvmod=mean(ws_hvmod,na.rm = FALSE),ws_non_hvac=mean(ws_non_hvac,na.rm = FALSE))
+  summarise(n=n(),fit=mean(fit),kwh=mean(kwh),ws_amics=mean(ws_amics,na.rm = TRUE),ws_actual=mean(ws_actual,na.rm = TRUE),ws_hvac=mean(ws_hvac,na.rm = TRUE),ws_hvmod=mean(ws_hvmod,na.rm = TRUE),ws_non_hvac=mean(ws_non_hvac,na.rm = TRUE))
 
-ws_plot<-ggplot(ws_agg2 %>% select(-n) %>% reshape2::melt(id.vars=c("hour")))+
-# ws_plot<-ggplot(ws_agg2 %>% select(hour,ws_amics,ws_hvac) %>% reshape2::melt(id.vars=c("hour")))+
+# ws_plot<-ggplot(ws_agg2 %>% ungroup() %>% select(-n,-Site,-fit,-kwh) %>% reshape2::melt(id.vars=c("hour")))+
+ws_plot<-ggplot(ws_agg2 %>% ungroup() %>% select(hour,ws_amics,ws_hvac) %>% reshape2::melt(id.vars=c("hour")))+
   geom_line(aes(x=hour,y=value,color=variable))+
   geom_hline(color="green",aes(yintercept=mean(value[variable=="ws_non_hvac"])))+
   # facet_grid(.~weekend)+
@@ -127,6 +149,23 @@ ws_plot<-ggplot(ws_agg2 %>% select(-n) %>% reshape2::melt(id.vars=c("hour")))+
 
 # ggsave(plot = ws_plot,file=paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/plot_",i,".jpg"))
 
+ws_amics.ws_hvac<-error_metrics(full_ws,"ws_hvac","ws_amics")
+
+ws_amics.ws_actual<-error_metrics(full_ws,"ws_actual","ws_amics")
+
+ws_actual.ws_hvac<-error_metrics(full_ws,"ws_hvac","ws_actual")
+
+ws_hvac.ws_hvmod<-error_metrics(full_ws,"ws_hvac","ws_hvmod")
+
+actual.amics<-error_metrics(full_ws,"kwh","fit")
+
+hvac_actual.ws_amics<-error_metrics(full_ws,"hvac_est","ws_amics")
+
+met_out<-bind_rows(actual.amics,ws_amics.ws_hvac,ws_amics.ws_actual,ws_actual.ws_hvac,ws_hvac.ws_hvmod,hvac_actual.ws_amics)
+
+full_metout<-bind_rows(full_metout,met_out)
+write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
+
 avg_daily<-pred_pre %>%
   filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>%
   mutate(date=as.Date(date),hour=as.numeric(hour)) %>% 
@@ -135,52 +174,96 @@ avg_daily<-pred_pre %>%
 # print(mean(avg_daily$daily))
 # print(error_metrics(data=pred_pre,actual = "kwh",predicted = "fit"))
 # print(error_metrics(data=pred_pre_hvac,actual = "kwh",predicted = "fit"))
+ws_data<-full_ws %>% 
+  # filter(date=="2016-06-20") %>%
+  group_by(hour) %>% 
+  summarise(ws_hvac=mean(ws_hvac),ws_non_hvac=mean(ws_non_hvac),
+    non_ws_hvac=mean(base_hvac),non_non=mean(base_actual-base_hvac),
+    ws_amics=mean(ws_amics),base_amics=mean(base_amics),
+    base=mean(base_actual),actual=mean(kwh),total=ws_hvac+ws_non_hvac+non_ws_hvac+non_non)
+
+ggplot(ws_data %>% select(hour,ws_hvac,ws_non_hvac,non_ws_hvac,non_non) %>% reshape2::melt(id.vars="hour"))+
+  geom_bar(aes(x=hour,y=value,fill=variable),position = "stack",stat="identity")+
+  scale_fill_manual(
+    breaks=c("ws_hvac","ws_non_hvac","non_ws_hvac","non_non"),
+    labels=c("WS HVAC","WS non-HVAC","Baseline HVAC","Baseline non-HVAC"),
+    values=c("blue","red","gray50","black")
+  )+
+  labs(y="kWh",x="Hour",fill="Component")
+
+ggplot(ws_data %>% select(hour,ws_amics,base_amics) %>% reshape2::melt(id.vars="hour"))+
+  geom_bar(aes(x=hour,y=value,fill=variable),position = "stack",stat="identity")+
+  scale_fill_manual(
+    breaks=c("ws_amics","base_amics"),
+    labels=c("WS AMICS","Baseline AMICS"),
+    values=c("blue","black")
+  )+
+  labs(y="kWh",x="Hour",fill="Component")
+  # geom_line(data=ws_data,aes(x=hour,y=ws_amics+base))
+
 ws_data<-full_ws %>% filter(date=="2016-06-20") %>% group_by(hour) %>% 
     summarise(base=mean(base_actual),actual=mean(kwh))
+    # summarise(base=mean(base_hvac),actual=mean(hvac_est))
 
 ws_calc<-ggplot(ws_data)+
-  geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="red",alpha=.3)+
+  geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="blue",alpha=.3)+
   # geom_ribbon(aes(x=hour,ymin=0,ymax=base),fill="black",alpha=.3)+
   geom_line(data=ws_data %>% reshape2::melt(id.vars="hour"),aes(x=hour,y=value,color=variable))+
   scale_color_manual(
     breaks=c("base","actual"),
     labels=c("Baseline","Actual Usage"),
-    values=c("black","red")
+    # labels=c("Baseline HVAC","Actual HVAC"),
+    values=c("black","blue")
+    # values=c("gray40","blue")
   )+
-  labs(color="Data",y="kWh",x="Hour")
+  labs(color="Data",y="kWh",x="Hours of June 20th")
 
-ggplot(full_ws)+
-  geom_line(aes(x=readdate,y=kwh),color="red")+
-  geom_line(aes(x=readdate,y=fit),color="blue")+
-  geom_line(aes(x=readdate,y=fit.hvac),color="orange")+
-  geom_line(aes(x=readdate,y=hvac_est),color="gray")
+ggplot(
+  full_ws %>% 
+    filter(date=="2016-06-20"&minute(readdate)==0) %>% 
+    select(readdate,ws_hvac,ws_amics) %>% 
+    reshape2::melt(id.vars="readdate"))+
+  geom_line(aes(x=hour(readdate),y=value,color=variable))+
+  scale_color_manual(
+    breaks=c("ws_amics","ws_hvac"),
+    labels=c("WS AMICS","WS HVAC"),
+    values=c("blue","red")
+  )+
+  labs(color="Data",y="Weather-Sensitive Change (kWh)",x="Hours of June 20th")
 
-ggplot(full_ws)+
-  # geom_line(aes(x=readdate,y=ws_actual),color="red")+
-  # geom_line(aes(x=readdate,y=ws_amics),color="blue")+
-  geom_line(aes(x=readdate,y=ws_hvmod),color="orange")+
-  geom_line(aes(x=readdate,y=ws_hvac),color="gray")+
-  labs(x=NULL)
+# ggplot(full_ws)+
+#   geom_line(aes(x=readdate,y=kwh),color="red")+
+#   geom_line(aes(x=readdate,y=fit),color="blue")+
+#   geom_line(aes(x=readdate,y=fit.hvac),color="orange")+
+#   geom_line(aes(x=readdate,y=hvac_est),color="gray")
 
-ggplot(full_ws %>% filter(date(readdate)>"2016-10-01"))+
-  geom_line(aes(x=readdate,y=base_actual),color="green")+
-  geom_line(aes(x=readdate,y=kwh),color="red")
-  geom_line(aes(x=readdate,y=base_actual+ws_actual),color="red")
+# ggplot(full_ws)+
+#   # geom_line(aes(x=readdate,y=ws_actual),color="red")+
+#   # geom_line(aes(x=readdate,y=ws_amics),color="blue")+
+#   geom_line(aes(x=readdate,y=ws_hvmod),color="orange")+
+#   geom_line(aes(x=readdate,y=ws_hvac),color="gray")+
+#   labs(x=NULL)
+
+# ggplot(full_ws %>% filter(date(readdate)>"2016-10-01"))+
+#   geom_line(aes(x=readdate,y=base_actual),color="green")+
+#   geom_line(aes(x=readdate,y=kwh),color="red")
+#   geom_line(aes(x=readdate,y=base_actual+ws_actual),color="red")
   
-zzz<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),actual=mean(kwh),base=mean(base_actual),ws=mean(ws_actual))
-yyy<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),amics=mean(fit),base_amics=mean(base_amics),ws_amics=mean(ws_amics))
-fff<-left_join(zzz,yyy)
-fff$off<-fff$ws-fff$ws_amics
-fff$p<-fff$off/fff$ws
+# zzz<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),actual=mean(kwh),base=mean(base_actual),ws=mean(ws_actual))
+# yyy<-full_ws %>% group_by(cdd_bin,hdd_bin,weekend) %>% summarise(n=n_distinct(date(readdate)),amics=mean(fit),base_amics=mean(base_amics),ws_amics=mean(ws_amics))
+# fff<-left_join(zzz,yyy)
+# fff$off<-fff$ws-fff$ws_amics
+# fff$p<-fff$off/fff$ws
 
-AMICS2<-full_ws %>% group_by(day_bin,hour) %>% mutate(amics2=mean(kwh))
-
-ggplot(AMICS2 %>% filter(day_bin=="100"))+
-  geom_line(aes(x=readdate,y=kwh),color="red")+
-  geom_hline(yintercept = mean(AMICS2$kwh[AMICS2$day_bin=="100"]),color="red")+
-  geom_line(aes(x=readdate,y=fit),color="blue")+
-  geom_hline(yintercept=mean(AMICS2$fit[AMICS2$day_bin=="100"]),color="blue")+
-  labs(title=NULL)
+# AMICS2<-full_ws %>% group_by(day_bin,hour) %>% mutate(amics2=mean(kwh))
+# 
+# check_bin<-"000"
+# ggplot(AMICS2 %>% filter(day_bin==check_bin))+
+#   geom_line(aes(x=readdate,y=kwh),color="red")+
+#   geom_hline(yintercept = mean(AMICS2$kwh[AMICS2$day_bin==check_bin]),color="red")+
+#   geom_line(aes(x=readdate,y=fit),color="blue")+
+#   geom_hline(yintercept=mean(AMICS2$fit[AMICS2$day_bin==check_bin]),color="blue")+
+#   labs(title=NULL)
 
 # print(ws_plot)
 }
@@ -435,5 +518,42 @@ ggplot()+
   geom_line(data=left_join(low,high,by="hour"),aes(x=hour,y=(mean_fit.y-mean_fit.x)),color="red")+
   labs(y="kWh",title="kWh diff cdd4 cdd0")
 
+
+full_ws %>% mutate(model="amics", said=sel_id, avg=mean(ws_actual, na.rm=TRUE)) %>%
+    summarize(model=first(model), said=first(said),
+      TSS=sum((ws_actual-avg)^2),
+      ESS=sum((ws_amics-avg)^2),
+      R_sq=ESS/TSS, n=n(),
+      SSE=sum((ws_amics-ws_actual)^2),
+      RMSE=sqrt(SSE/(n-23)),
+      CV_RMSE=RMSE/mean(ws_actual),
+      NMBE=sum(ws_amics-avg)/sum(avg))
+
+error_metrics(ws_agg2,"kwh","fit")
+full_ws %>% mutate(model="amics", said=sel_id, avg=mean(kwh, na.rm=TRUE)) %>%
+    summarize(model=first(model), said=first(said),
+      TSS=sum((kwh-avg)^2),
+      ESS=sum((fit-avg)^2),
+      R_sq=ESS/TSS, n=n(),
+      SSE=sum((fit-kwh)^2),
+      RMSE=sqrt(SSE/(n-23)),
+      CV_RMSE=RMSE/mean(kwh),
+      NMBE=sum(fit-avg)/sum(avg))
+
+full_ws_agg<-full_ws %>% group_by(hour) %>% 
+  summarise(
+    mean_fit=mean(fit),sd_fit=sd(fit),mean_kwh=mean(kwh),sd_kwh=sd(kwh),
+    mean_wsfit=mean(ws_amics),sd_wsfit=sd(ws_amics),mean_wskwh=mean(ws_actual),sd_wskwh=sd(ws_actual))
+ggplot(full_ws_agg)+
+  geom_ribbon(aes(x=hour,ymin=mean_fit-sd_fit,ymax=mean_fit+sd_fit),fill="red",alpha=.2)+
+  geom_ribbon(aes(x=hour,ymin=mean_kwh-sd_kwh,ymax=mean_kwh+sd_kwh),fill="blue",alpha=.2)+
+  geom_line(aes(x=hour,y=mean_fit),color="red")+
+  geom_line(aes(x=hour,y=mean_kwh),color="blue")
+
+ggplot(full_ws_agg)+
+  geom_ribbon(aes(x=hour,ymin=mean_wsfit-sd_wsfit,ymax=mean_wsfit+sd_wsfit),fill="red",alpha=.2)+
+  geom_ribbon(aes(x=hour,ymin=mean_wskwh-sd_wskwh,ymax=mean_wskwh+sd_wskwh),fill="blue",alpha=.2)+
+  geom_line(aes(x=hour,y=mean_wsfit),color="red")+
+  geom_line(aes(x=hour,y=mean_wskwh),color="blue")
 
 
