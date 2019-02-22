@@ -5,17 +5,26 @@ library(ggplot2)
 # ami <- readr::read_csv("/Volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Sample Data for Ted/Sample_AMI.csv")
 ami <-readr::read_csv("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/SumHVAC_60min_2.csv")
 ami$said<-ami$Site
-ami$said[ami$Site==1]<-1
-ami$said[ami$Site==2]<-2
-ami$said[ami$Site==3]<-3
-ami$said[ami$Site==4]<-4
-ami$said[ami$Site==5]<-5
-ami$said[ami$Site==6]<-7
-ami$said[ami$Site==7]<-8
-ami$said[ami$Site==8]<-434127
-ami$said[ami$Site==9]<-13497992
-ami$said[ami$Site==10]<-32748371
+# ami$said[ami$Site==1]<-1
+# ami$said[ami$Site==2]<-2
+# ami$said[ami$Site==3]<-3
+# ami$said[ami$Site==4]<-4
+# ami$said[ami$Site==5]<-5
+# ami$said[ami$Site==6]<-7
+# ami$said[ami$Site==7]<-8
+# ami$said[ami$Site==8]<-434127
+# ami$said[ami$Site==9]<-13497992
+# ami$said[ami$Site==10]<-32748371
 table(ami$said)
+
+# HVAC for 7/8 and 8/9 need to be modeled together. 
+ami$sumHVACWh[ami$said==9&lubridate::date(ami$Date.Time)<"2016-08-18"]<-NA
+ami$sumHVACWh[ami$said==8&lubridate::date(ami$Date.Time)>"2016-12-04"]<-NA
+
+ami$said[ami$Site==9]<-8
+table(ami$said)
+
+ami<-ami %>% group_by(said,Date.Time) %>% summarise(sumHVACWh=sum(sumHVACWh)) %>% filter(!is.na(sumHVACWh))
 
 ami$readdate<-ami$Date.Time
 
@@ -104,7 +113,7 @@ plot_ttow <- function(x=dta_test, pre_test=TRUE, coord=c(18, 7), method="TTOW", 
 
 # remove bad data
 save_dta<-dta
-dta<-dta %>% filter(!(said==8&as.Date(readdate)>="2016-10-20"&as.Date(readdate)<="2017-02-01"))
+dta<-dta %>% subset(!(said==7&as.Date(readdate)>="2016-10-20"&as.Date(readdate)<="2017-02-01"))
 
 # Select holdout sample weeks
 # set.seed(71614) #HO1
@@ -116,7 +125,7 @@ table(dta$holdout,dta$said)
 
 ## 2. Estimate occupied hours across entire week, use this to define typical hours of operation ----
 # said; Sample ID
-sel_id <- 8; id_plot<-7
+sel_id <- 7; id_plot<-6
 
 # # Use sample pre to define operating schedule
 dta$dow <- substr(dta$tow, 1, 1)
@@ -222,7 +231,7 @@ pred_pre_hvac<-pred_pre
 pred_post_hvac<-pred_post
 
 save(amics_lm_test_hvac,pred_ho_hvac, amics_lm_hvac, pred_pre_hvac, pred_post_hvac,
-     file=sprintf("~/desktop/AMI HVAC Outputs/amics_ttow_id%s.Rdata", id_plot))
+     file=sprintf("~/desktop/AMI HVAC Write Up/AMI HVAC Outputs/amics_ttow_id%s.Rdata", id_plot))
 
 rm(amics_lm_test_hvac,amics_lm_test,
 pred_ho_hvac,pred_ho,
