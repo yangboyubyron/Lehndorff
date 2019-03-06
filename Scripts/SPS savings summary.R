@@ -32,4 +32,6 @@ Kitsagg<-Kits %>% group_by(Program="School Education Kits") %>% summarise(kW=sum
 # Residential Demand Response - NM
 
 # Energy Feedback Residential - NM
+# “EF_NM January 2019 YTD Results 01212019.xslx” - savings totals are in cells C94 and D94
+EFagg<-as.data.frame(c(Program="Energy Feedback Residential",kW=NA,kWh=3897090))
 
