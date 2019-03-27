@@ -570,8 +570,6 @@ otherdupe<-c("1 SOUTHLAND MALL DR, Hayward 94545",
 
 table(otherdupe%in%drops$fullad)
 
-
-
 New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!cleanest%in%drops$cleanest) %>% 
   filter(Site.Address!="") %>% 
   filter(Climate.Zone==3|Climate.Zone==4|Climate.Zone==12|Climate.Zone==2|Climate.Zone==13) %>%
@@ -579,6 +577,160 @@ New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!
 
 # write.csv(New2018_dedupe %>% select(-SAID,-cleanest) %>% ungroup(),"/Volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/Deduped_2018_0910.csv",row.names = FALSE)
 
+# Additional Data 03/20/19
+new.data<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/EnergySolutions Data_032019/Selected Program Data for PG&E C&S project.csv",stringsAsFactors = FALSE)
+new.data$Equipment.Tons<-as.numeric(new.data$Equipment.Tons)
+new.data$CZ<-as.numeric(new.data$Climate.Zone)
 
+# old samples
+RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",stringsAsFactors = FALSE)
+table(RTUin$Sample)
 
+Sample1<-RTUin %>% filter(Sample!="Not yet sampled") %>% select(EEID,business_name,line2,exCITY,exZIP,contact_name,validEmail,emaildupe,Channel,CZ,acc1516,strata)
+Sample5<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/4. Email/RTUdraft_SAMPLE5_0719.csv",stringsAsFactors = FALSE)
+Sample6<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE6_0801.csv",stringsAsFactors = FALSE)
+Sample7<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/6. email 1K/RTUdraft_SAMPLE7_0801.csv",stringsAsFactors = FALSE)
+Sample8<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/7. email 1K/RTUdraft_SAMPLE8_0801.csv",stringsAsFactors = FALSE)
+Sample9<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE9_1015.csv",stringsAsFactors = FALSE)
+Sample10<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE10_1015.csv",stringsAsFactors = FALSE)
+Sample11<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE11_1015.csv",stringsAsFactors = FALSE)
+Sample12<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE12_1015.csv",stringsAsFactors = FALSE)
+Sample13<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE13_1108.csv",stringsAsFactors = FALSE)
+Sample14<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE14_1108.csv",stringsAsFactors = FALSE)
+Sample15<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE15_1108.csv",stringsAsFactors = FALSE)
+Sample16<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE16_1108.csv",stringsAsFactors = FALSE)
+Sample17<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE17_1108.csv",stringsAsFactors = FALSE)
+Sample18<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_SAMPLE18_1108.csv",stringsAsFactors = FALSE)
+Sample19<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTUdraft_FinalSample_0108.csv",stringsAsFactors = FALSE)
 
+# PrevSamp<-bind_rows(Sample1,Sample5,Sample6,Sample7,Sample8,Sample9,Sample10,Sample11,Sample12,Sample13,Sample14,Sample15,Sample16,Sample17,Sample18,Sample19)
+PrevSamp<-RTUin %>% filter(Sample!="Not yet sampled"|
+    EEID%in%Sample5$EEID|
+    EEID%in%Sample6$EEID|
+    EEID%in%Sample7$EEID|
+    EEID%in%Sample8$EEID|
+    EEID%in%Sample9$EEID|
+    EEID%in%Sample10$EEID|
+    EEID%in%Sample11$EEID|
+    EEID%in%Sample12$EEID|
+    EEID%in%Sample13$EEID|
+    EEID%in%Sample14$EEID|
+    EEID%in%Sample15$EEID|
+    EEID%in%Sample16$EEID|
+    EEID%in%Sample17$EEID|
+    EEID%in%Sample18$EEID|
+    EEID%in%Sample19$EEID)
+
+Sample2018<-read.csv("/Volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/Deduped_2018_0910.csv",stringsAsFactors = FALSE)
+
+# size flag
+new.data$size.good<-new.data$Equipment.Tons>=5.4
+table(new.data$size.good)
+
+# CZ flag
+new.data$CZ.good<-new.data$CZ%in%(c(3,12,13))
+table(new.data$CZ.good)
+
+# local gov flag
+new.data$local_government<-FALSE
+new.data$local_government[grepl("police|fire d|fire p|govern|school|district|county|city of|university|community center|PD|education|consulate",new.data$CUSTOMER.NAME,ignore.case = TRUE)]<-TRUE
+new.data$local_government[grepl("park",new.data$CUSTOMER.NAME,ignore.case = TRUE)&grepl("rec",new.data$CUSTOMER.NAME,ignore.case = TRUE)]<-TRUE
+new.data$local_government[grepl("courthouse|district court|municipal court|court house",new.data$CUSTOMER.NAME,ignore.case = TRUE)]<-TRUE
+new.data$local_government[grepl("inc|LLC|corp",new.data$CUSTOMER.NAME,ignore.case = TRUE)]<-FALSE
+new.data$local_government[grepl("DEPARTMENT OF CORRECTIONS|NATIONAL GUARD|CITY OF|NAVAL AIR STATION",new.data$CUSTOMER.NAME)]<-TRUE
+table(new.data$local_government)
+
+# old addresses
+PrevSamp$cleanest<-tolower(gsub("[[:punct:]]*","",PrevSamp$Site_Address_Combined2))
+PrevSamp$cleanest<-gsub(" north "," n ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" south "," s ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" east "," e ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" west "," w ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" northwest "," nw ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" northeast "," ne ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" southwest "," sw ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" road "," rd ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" drive "," dr ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" avenue "," ave ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" parkway "," pkwy ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" boulevard "," blvd ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" street "," st ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" place "," pl ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" court "," ct ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" way "," wy ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" highway "," hwy ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" suite "," ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" ste "," ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" hse "," ",PrevSamp$cleanest)
+PrevSamp$cleanest<-gsub(" #"," ",PrevSamp$cleanest,fixed = TRUE)
+PrevSamp$cleanest<-gsub(" sp "," ",PrevSamp$cleanest)
+
+# 2018 addresses
+Sample2018$cleanest<-tolower(gsub("[[:punct:]]*","",Sample2018$fullad))
+Sample2018$cleanest<-gsub(" north "," n ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" south "," s ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" east "," e ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" west "," w ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" northwest "," nw ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" northeast "," ne ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" southwest "," sw ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" road "," rd ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" drive "," dr ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" avenue "," ave ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" parkway "," pkwy ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" boulevard "," blvd ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" street "," st ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" place "," pl ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" court "," ct ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" way "," wy ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" highway "," hwy ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" suite "," ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" ste "," ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" hse "," ",Sample2018$cleanest)
+Sample2018$cleanest<-gsub(" #"," ",Sample2018$cleanest,fixed = TRUE)
+Sample2018$cleanest<-gsub(" sp "," ",Sample2018$cleanest)
+
+# new full address
+new.data$fullad<-paste(new.data$CUSTOMER.ADDRESS,paste(new.data$CUSTOMER.CITY, new.data$Zip.Code,sep=" "),sep = ", ")
+
+new.data$cleanest<-tolower(gsub("[[:punct:]]*","",new.data$fullad))
+new.data$cleanest<-gsub(" north "," n ",new.data$cleanest)
+new.data$cleanest<-gsub(" south "," s ",new.data$cleanest)
+new.data$cleanest<-gsub(" east "," e ",new.data$cleanest)
+new.data$cleanest<-gsub(" west "," w ",new.data$cleanest)
+new.data$cleanest<-gsub(" northwest "," nw ",new.data$cleanest)
+new.data$cleanest<-gsub(" northeast "," ne ",new.data$cleanest)
+new.data$cleanest<-gsub(" southwest "," sw ",new.data$cleanest)
+new.data$cleanest<-gsub(" road "," rd ",new.data$cleanest)
+new.data$cleanest<-gsub(" drive "," dr ",new.data$cleanest)
+new.data$cleanest<-gsub(" avenue "," ave ",new.data$cleanest)
+new.data$cleanest<-gsub(" parkway "," pkwy ",new.data$cleanest)
+new.data$cleanest<-gsub(" boulevard "," blvd ",new.data$cleanest)
+new.data$cleanest<-gsub(" street "," st ",new.data$cleanest)
+new.data$cleanest<-gsub(" place "," pl ",new.data$cleanest)
+new.data$cleanest<-gsub(" court "," ct ",new.data$cleanest)
+new.data$cleanest<-gsub(" way "," wy ",new.data$cleanest)
+new.data$cleanest<-gsub(" highway "," hwy ",new.data$cleanest)
+new.data$cleanest<-gsub(" suite "," ",new.data$cleanest)
+new.data$cleanest<-gsub(" ste "," ",new.data$cleanest)
+new.data$cleanest<-gsub(" hse "," ",new.data$cleanest)
+new.data$cleanest<-gsub(" #"," ",new.data$cleanest,fixed = TRUE)
+new.data$cleanest<-gsub(" sp "," ",new.data$cleanest)
+
+table(!new.data$cleanest%in%PrevSamp$cleanest)
+table(!new.data$cleanest%in%Sample2018$cleanest)
+
+# new out
+new.out<-new.data %>% filter(!cleanest%in%PrevSamp$cleanest&!cleanest%in%Sample2018$cleanest&size.good&!local_government&CZ.good)
+table(new.out$CZ)
+summary(new.out$Equipment.Tons)
+
+new.out.dedupe<-new.out %>% 
+  group_by(CUSTOMER.NAME,CUSTOMER.CITY,Zip.Code,CZ) %>% 
+  summarise(Address=first(CUSTOMER.ADDRESS),Unique.Adds=n_distinct(CUSTOMER.ADDRESS),Qualifying.Units=n()) %>% 
+  select(CUSTOMER.NAME,Address,CUSTOMER.CITY,Zip.Code,CZ,Unique.Adds,Qualifying.Units) %>% arrange(CUSTOMER.NAME)
+
+to.check<-new.out.dedupe$Address
+check<-PrevSamp %>% filter(grepl(paste(to.check,collapse = "|"),cleanest,ignore.case = TRUE))
+
+# write.csv(new.out.dedupe,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/032519 Sample/032519 Sample.csv",row.names = FALSE)
