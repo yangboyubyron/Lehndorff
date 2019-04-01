@@ -466,6 +466,8 @@ w_rate$SFMF[grepl("Multi",w_rate$Customer.Class)]<-"MF"
 w_rate$SFMF[grepl("Single",w_rate$Customer.Class)]<-"SF"
 table(w_rate$SFMF)
 
+# save(w_rate,file="/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/usage LI and rate code.RData")
+
 thresh_SFMF<-w_rate %>% 
   group_by(SFMF,Heating=e_heat,Cooling=e_cool!="No Cooling") %>% 
   summarise(n=n(),Avg.kWh.80=quantile(avg,probs = .8),`Percent ss above 1.1`=mean(ss_ratio>1.1),`Percent ws above 1.1`=mean(ws_ratio>1.1))
