@@ -1,6 +1,6 @@
 # ComEd Sample Frame Summary
-
 library(dplyr)
+library(xlsx)
 
 load("/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/usage LI and rate code.RData")
 
@@ -24,11 +24,11 @@ table(frame$usage_level)
 frame$LI_level<-ifelse(frame$LI_score>.8,"IE","non-IE")
 table(frame$LI_level)
 
-frame$Sample.Group<-paste(frame$LI_level,frame$e_heat,frame$SFMF,frame$usage_level)
+frame$Sample.Group<-paste(frame$LI_level,frame$SFMF,frame$e_heat,frame$usage_level)
 table(frame$Sample.Group)
 
 # select IE high users
-frame.IE<-frame %>% filter(LI_level=="non-IE")
+frame.IE<-frame %>% filter(LI_level=="IE")
 table(frame.IE$Sample.Group)
 
 # add quotas
@@ -43,7 +43,20 @@ frame.rand<-frame.quota %>% ungroup() %>%
   mutate(rand.rank=rank(runif(n())))
 
 # pull sample
-frame.pull<-frame.rand %>% filter(rand.rank<=15*Quota)
+frame.pull<-frame.rand %>% filter(rand.rank<=15*Quota) %>% select(ID,CENSUS_TRACT_CODE,LI_score,SFMF,ws_ratio,e_heat,avg.annual,usage_level,Sample.Group)
+table(frame.pull$Sample.Group)
+# write.csv(frame.pull,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull 0404.csv",row.names = FALSE)
+
+# Pull summary
+pull.summary.table<-frame.pull %>% group_by(SFMF,Heating=e_heat) %>% 
+  summarise(Stratum.1=sum(usage_level=="Stratum 1")/15,Stratum.2=sum(usage_level=="Stratum 2")/15) %>% 
+  arrange(desc(SFMF))
+# write.xlsx(pull.summary.table %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary.xlsx",sheetName = "Allocation Confirmation",row.names = FALSE)
+
+pull.summary.full<-frame.pull %>% group_by(SFMF,Heating=e_heat,usage_level) %>% 
+  summarise(count.in.pull=n(),allocation=count.in.pull/15,mean.li=mean(LI_score),mean.ws=mean(ws_ratio),mean.usage=mean(avg.annual)) %>% 
+  arrange(desc(SFMF))
+# write.xlsx(pull.summary.full %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary.xlsx",sheetName = "Sample Summary",append = TRUE,row.names = FALSE)
 
 # counts should match previous sample frame summary
 frame.summary<-frame %>% 
