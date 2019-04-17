@@ -581,6 +581,8 @@ New2018_dedupe<-New2018 %>% filter(!fullad%in%otherdupe&!fullad%in%test$fullad,!
 new.data<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/EnergySolutions Data_032019/Selected Program Data for PG&E C&S project.csv",stringsAsFactors = FALSE)
 new.data$Equipment.Tons<-as.numeric(new.data$Equipment.Tons)
 new.data$CZ<-as.numeric(new.data$Climate.Zone)
+new.data$year<-as.numeric(paste0("20",substr(new.data$Submit.Date,nchar(new.data$Submit.Date)-1,nchar(new.data$Submit.Date))))
+table(new.data$year)
 
 # old samples
 RTUin<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/old sample/RTU_Frame_and_Sample.csv",stringsAsFactors = FALSE)
@@ -624,11 +626,11 @@ PrevSamp<-RTUin %>% filter(Sample!="Not yet sampled"|
 Sample2018<-read.csv("/Volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/082818 data/Deduped_2018_0910.csv",stringsAsFactors = FALSE)
 
 # size flag
-new.data$size.good<-new.data$Equipment.Tons>=5.4
+new.data$size.good<-new.data$Equipment.Tons>=4.5&new.data$Equipment.Tons<=18
 table(new.data$size.good)
 
-# CZ flag
-new.data$CZ.good<-new.data$CZ%in%(c(3,12,13))
+# CZ flag (all of the CZ can be included)
+new.data$CZ.good<-new.data$CZ%in%(c(3,12,13,2,4))
 table(new.data$CZ.good)
 
 # local gov flag
@@ -733,4 +735,37 @@ new.out.dedupe<-new.out %>%
 to.check<-new.out.dedupe$Address
 check<-PrevSamp %>% filter(grepl(paste(to.check,collapse = "|"),cleanest,ignore.case = TRUE))
 
-# write.csv(new.out.dedupe,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/032519 Sample/032519 Sample.csv",row.names = FALSE)
+# already sent
+already.sent<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/032519 Sample/032519 Sample.csv",stringsAsFactors = FALSE)
+
+# not already sent
+not.sent<-new.out.dedupe %>% filter(
+  !paste(Address,CUSTOMER.CITY,Zip.Code,CZ)%in%
+    paste(already.sent$Address,already.sent$CUSTOMER.CITY,already.sent$Zip.Code,already.sent$CZ)
+)
+
+# shouldn't have been sent (tonnage > 18)
+bad.sent<-already.sent %>% filter(
+  !paste(Address,CUSTOMER.CITY,Zip.Code,CZ)%in%
+    paste(new.out.dedupe$Address,new.out.dedupe$CUSTOMER.CITY,new.out.dedupe$Zip.Code,new.out.dedupe$CZ)
+  )
+
+nrow(already.sent)-nrow(bad.sent)+nrow(not.sent)
+nrow(new.out.dedupe)
+
+table(
+  paste(not.sent$CUSTOMER.NAME,not.sent$CUSTOMER.CITY,not.sent$Zip.Code)%in%
+    paste(already.sent$CUSTOMER.NAME,already.sent$CUSTOMER.CITY,already.sent$Zip.Code)
+  )
+
+subset(not.sent,paste(CUSTOMER.NAME,CUSTOMER.CITY,Zip.Code)%in%
+    paste(already.sent$CUSTOMER.NAME,already.sent$CUSTOMER.CITY,already.sent$Zip.Code))
+
+# Remove 3 additional potential duplicates
+additional.out<-not.sent %>% 
+  filter(
+    !paste(CUSTOMER.NAME,CUSTOMER.CITY,Zip.Code)%in%
+    paste(already.sent$CUSTOMER.NAME,already.sent$CUSTOMER.CITY,already.sent$Zip.Code)
+  )
+
+# write.csv(additional.out,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/041719 Sample/041719 Sample.csv",row.names = FALSE)
