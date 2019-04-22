@@ -86,3 +86,7 @@ customers<-read.delim("/volumes/Projects/466002 - ComEd Needs Assessment/Confide
 # 
 # rm(cust.check,data.check)
 
+# analysis for 04/26 Report
+table.2<-w_rate %>% group_by(IE=LI_score>.8,SFMF) %>% 
+  summarise(n=n(),Median=median(avg*12),p.80=quantile(avg*12,probs = .8),p.90=quantile(avg*12,probs = .9))
+
