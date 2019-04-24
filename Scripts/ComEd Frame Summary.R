@@ -87,6 +87,62 @@ customers<-read.delim("/volumes/Projects/466002 - ComEd Needs Assessment/Confide
 # rm(cust.check,data.check)
 
 # analysis for 04/26 Report
-table.2<-w_rate %>% group_by(IE=LI_score>.8,SFMF) %>% 
-  summarise(n=n(),Median=median(avg*12),p.80=quantile(avg*12,probs = .8),p.90=quantile(avg*12,probs = .9))
+# usage strata
+w_rate$usage_level<-"Not High Use"
+w_rate$usage_level[w_rate$avg*12>=11000&w_rate$avg*12<14000]<-"Stratum 1"
+w_rate$usage_level[w_rate$avg*12>=14000&w_rate$avg*12<=34000]<-"Stratum 2"
+table(w_rate$usage_level)
 
+table.2<-w_rate %>% group_by(IE=LI_score>.8,SFMF) %>% 
+  summarise(n=n(),Median=median(avg*12),p.80=quantile(avg*12,probs = .8),p.90=quantile(avg*12,probs = .9)) %>% 
+  arrange(-IE,desc(SFMF))
+
+quantile(w_rate$avg*12,probs = c(.05,.5,.8,.9,.95))
+
+# write.csv(table.2,"~/desktop/tab2.csv",row.names = FALSE)
+
+probs<-c(seq(0,.9,.1),.995)
+
+all<-data.frame("Quants"=probs,"All"=quantile(w_rate$avg*12,probs,names = FALSE))
+lowest<-data.frame("Quants"=probs,"Lowest"=quantile(subset(w_rate,between(LI_score,0,.19999))$avg*12,probs,names = FALSE))
+vlow<-data.frame("Quants"=probs,"Very Low"=quantile(subset(w_rate,between(LI_score,.2,.39999))$avg*12,probs,names = FALSE))
+low<-data.frame("Quants"=probs,"Low"=quantile(subset(w_rate,between(LI_score,.4,.69999))$avg*12,probs,names = FALSE))
+medium<-data.frame("Quants"=probs,"Medium"=quantile(subset(w_rate,between(LI_score,.7,.84999))$avg*12,probs,names = FALSE))
+high<-data.frame("Quants"=probs,"High"=quantile(subset(w_rate,between(LI_score,.85,1))$avg*12,probs,names = FALSE))
+
+usage.out<-left_join(all,lowest) %>% 
+  left_join(vlow) %>% left_join(low) %>% 
+  left_join(medium) %>% left_join(high)
+
+# write.csv(usage.out,"~/desktop/usage_quant.csv",row.names = FALSE)
+
+# Table 3 WS ratio
+w_rate$li_group[w_rate$LI_score>0]<-"Low"
+w_rate$li_group[w_rate$LI_score>=.7]<-"Medium"
+w_rate$li_group[w_rate$LI_score>=.85]<-"High"
+table(w_rate$li_group,exclude = NULL)
+
+all.3<-w_rate %>% group_by(Type="All",Group="All") %>% 
+  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+HT.3<-w_rate %>% group_by(Type="SFMF",Group=SFMF) %>% 
+  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+use.3<-w_rate %>% group_by(Type="Use",Group=usage_level) %>% 
+  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+LI.3<-w_rate %>% group_by(Type="LI",Group=li_group) %>% 
+  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+
+table.3<-bind_rows(all.3,HT.3,use.3,LI.3)
+# write.csv(table.3,"~/desktop/table3.csv",row.names = FALSE)
+
+# Table 4 SS ratio
+all.4<-w_rate %>% group_by(Type="All",Group="All") %>% 
+  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+HT.4<-w_rate %>% group_by(Type="SFMF",Group=SFMF) %>% 
+  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+use.4<-w_rate %>% group_by(Type="Use",Group=usage_level) %>% 
+  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+LI.4<-w_rate %>% group_by(Type="LI",Group=li_group) %>% 
+  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+
+table.4<-bind_rows(all.4,HT.4,use.4,LI.4)
+# write.csv(table.4,"~/desktop/table4.csv",row.names = FALSE)
