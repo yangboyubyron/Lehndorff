@@ -106,9 +106,9 @@ probs<-c(seq(0,.9,.1),.995)
 all<-data.frame("Quants"=probs,"All"=quantile(w_rate$avg*12,probs,names = FALSE))
 lowest<-data.frame("Quants"=probs,"Lowest"=quantile(subset(w_rate,between(LI_score,0,.19999))$avg*12,probs,names = FALSE))
 vlow<-data.frame("Quants"=probs,"Very Low"=quantile(subset(w_rate,between(LI_score,.2,.39999))$avg*12,probs,names = FALSE))
-low<-data.frame("Quants"=probs,"Low"=quantile(subset(w_rate,between(LI_score,.4,.69999))$avg*12,probs,names = FALSE))
-medium<-data.frame("Quants"=probs,"Medium"=quantile(subset(w_rate,between(LI_score,.7,.84999))$avg*12,probs,names = FALSE))
-high<-data.frame("Quants"=probs,"High"=quantile(subset(w_rate,between(LI_score,.85,1))$avg*12,probs,names = FALSE))
+low<-data.frame("Quants"=probs,"Low"=quantile(subset(w_rate,between(LI_score,.4,.59999))$avg*12,probs,names = FALSE))
+medium<-data.frame("Quants"=probs,"Medium"=quantile(subset(w_rate,between(LI_score,.6,.79999))$avg*12,probs,names = FALSE))
+high<-data.frame("Quants"=probs,"High"=quantile(subset(w_rate,between(LI_score,.8,1))$avg*12,probs,names = FALSE))
 
 usage.out<-left_join(all,lowest) %>% 
   left_join(vlow) %>% left_join(low) %>% 
@@ -118,31 +118,43 @@ usage.out<-left_join(all,lowest) %>%
 
 # Table 3 WS ratio
 w_rate$li_group[w_rate$LI_score>0]<-"Low"
-w_rate$li_group[w_rate$LI_score>=.7]<-"Medium"
-w_rate$li_group[w_rate$LI_score>=.85]<-"High"
+w_rate$li_group[w_rate$LI_score>=.6]<-"Medium"
+w_rate$li_group[w_rate$LI_score>=.8]<-"High"
 table(w_rate$li_group,exclude = NULL)
 
+w_rate$ws_kWh<-w_rate$W_DJF-w_rate$Shoulder
+
 all.3<-w_rate %>% group_by(Type="All",Group="All") %>% 
-  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+  # mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>%
+  summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
 HT.3<-w_rate %>% group_by(Type="SFMF",Group=SFMF) %>% 
-  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+  # mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% 
+  summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4])) %>% arrange(desc(Group))
 use.3<-w_rate %>% group_by(Type="Use",Group=usage_level) %>% 
-  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+  # mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% 
+  summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
 LI.3<-w_rate %>% group_by(Type="LI",Group=li_group) %>% 
-  mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>% summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
+  # mutate(grp.ws=median(ws_ratio),ws_kWh=(ws_ratio-grp.ws)*W_DJF) %>%
+  summarise(mean.ws=median(ws_ratio),p_1.4=mean(ws_ratio>1.4),med.use=median(ws_kWh[ws_ratio>1.4]))
 
 table.3<-bind_rows(all.3,HT.3,use.3,LI.3)
 # write.csv(table.3,"~/desktop/table3.csv",row.names = FALSE)
 
 # Table 4 SS ratio
+w_rate$ss_kWh<-w_rate$S_JA-w_rate$Shoulder
+
 all.4<-w_rate %>% group_by(Type="All",Group="All") %>% 
-  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+  # mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% 
+  summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
 HT.4<-w_rate %>% group_by(Type="SFMF",Group=SFMF) %>% 
-  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+  # mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% 
+  summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4])) %>% arrange(desc(Group))
 use.4<-w_rate %>% group_by(Type="Use",Group=usage_level) %>% 
-  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+  # mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% 
+  summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
 LI.4<-w_rate %>% group_by(Type="LI",Group=li_group) %>% 
-  mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
+  # mutate(grp.ss=median(ss_ratio),ss_kWh=(ss_ratio-grp.ss)*S_JA) %>% 
+  summarise(mean.ss=median(ss_ratio),p_1.4=mean(ss_ratio>1.4),med.use=median(ss_kWh[ss_ratio>1.4]))
 
 table.4<-bind_rows(all.4,HT.4,use.4,LI.4)
 # write.csv(table.4,"~/desktop/table4.csv",row.names = FALSE)
