@@ -41,6 +41,7 @@ set.seed(97244)
 frame.rand<-frame.quota %>% ungroup() %>% 
   group_by(Sample.Group) %>% 
   mutate(rand.rank=rank(runif(n())))
+# write.csv(frame.rand,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Frame With Random 0404.csv")
 
 # pull sample
 frame.pull<-frame.rand %>% filter(rand.rank<=15*Quota) %>% select(ID,CENSUS_TRACT_CODE,LI_score,SFMF,ws_ratio,e_heat,avg.annual,usage_level,Sample.Group)
@@ -158,3 +159,5 @@ LI.4<-w_rate %>% group_by(Type="LI",Group=li_group) %>%
 
 table.4<-bind_rows(all.4,HT.4,use.4,LI.4)
 # write.csv(table.4,"~/desktop/table4.csv",row.names = FALSE)
+
+# save(w_rate,file="/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Population All Fields.RData")
