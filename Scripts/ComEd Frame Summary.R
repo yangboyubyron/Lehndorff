@@ -44,20 +44,22 @@ frame.rand<-frame.quota %>% ungroup() %>%
 # write.csv(frame.rand,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Frame With Random 0404.csv")
 
 # pull sample
-frame.pull<-frame.rand %>% filter(rand.rank<=15*Quota) %>% select(ID,CENSUS_TRACT_CODE,LI_score,SFMF,ws_ratio,e_heat,avg.annual,usage_level,Sample.Group)
+frame.pull<-frame.rand %>% filter(rand.rank<=18*Quota) %>% 
+  select(ID,CENSUS_TRACT_CODE,LI_score,SFMF,ws_ratio,e_heat,avg.annual,usage_level,Sample.Group,
+    M01,M02,M03,M04,M05,M06,M07,M08,M09,M10,M11,M12)
 table(frame.pull$Sample.Group)
-# write.csv(frame.pull,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull 0404.csv",row.names = FALSE)
+# write.csv(frame.pull,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull 0507.csv",row.names = FALSE)
 
 # Pull summary
 pull.summary.table<-frame.pull %>% group_by(SFMF,Heating=e_heat) %>% 
-  summarise(Stratum.1=sum(usage_level=="Stratum 1")/15,Stratum.2=sum(usage_level=="Stratum 2")/15) %>% 
+  summarise(Stratum.1=sum(usage_level=="Stratum 1")/18,Stratum.2=sum(usage_level=="Stratum 2")/18) %>% 
   arrange(desc(SFMF))
-# write.xlsx(pull.summary.table %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary.xlsx",sheetName = "Allocation Confirmation",row.names = FALSE)
+# write.xlsx(pull.summary.table %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary 0507.xlsx",sheetName = "Allocation Confirmation",row.names = FALSE)
 
 pull.summary.full<-frame.pull %>% group_by(SFMF,Heating=e_heat,usage_level) %>% 
-  summarise(count.in.pull=n(),allocation=count.in.pull/15,mean.li=mean(LI_score),mean.ws=mean(ws_ratio),mean.usage=mean(avg.annual)) %>% 
+  summarise(count.in.pull=n(),allocation=count.in.pull/18,mean.li=mean(LI_score),mean.ws=mean(ws_ratio),mean.usage=mean(avg.annual)) %>% 
   arrange(desc(SFMF))
-# write.xlsx(pull.summary.full %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary.xlsx",sheetName = "Sample Summary",append = TRUE,row.names = FALSE)
+# write.xlsx(pull.summary.full %>% data.frame(),"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Sample Pull Summary 0507.xlsx",sheetName = "Sample Summary",append = TRUE,row.names = FALSE)
 
 # counts should match previous sample frame summary
 frame.summary<-frame %>% 
@@ -160,4 +162,5 @@ LI.4<-w_rate %>% group_by(Type="LI",Group=li_group) %>%
 table.4<-bind_rows(all.4,HT.4,use.4,LI.4)
 # write.csv(table.4,"~/desktop/table4.csv",row.names = FALSE)
 
+w_rate$in.sample1<-w_rate$ID%in%frame.pull$ID
 # save(w_rate,file="/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 1/ComEd customer data anon/Population All Fields.RData")
