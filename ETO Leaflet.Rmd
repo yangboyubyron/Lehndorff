@@ -1,0 +1,35 @@
+---
+title: "Leaflet Example"
+author: "From ODSC"
+date: "5/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
+```{r}
+library(leaflet)
+library(leaflet.extras)
+library(dplyr)
+
+projects<-read.csv("/volumes/Projects/430011 - ETO Existing Buildings/Data/All Commercial Site Projects.csv",stringsAsFactors = FALSE)
+proj.dat<-projects %>% filter(projectid!="") %>% group_by(projectid) %>% summarise(lat=first(et_latitude)+runif(1,0,.1),lng=first(et_longitude)+runif(1,0,.1),n=n(),desc=paste0("Total Measures: ",n()),date=min(as.Date(maxrecognizeddate)))
+
+```
+
+This map shows the `r format(sum(proj.dat$n),big.mark=",")` measures from the `r format(n_distinct(proj.dat$projectid),big.mark = ",")` projects completed by Energy Trust of Oregon between `r min(proj.dat$date)` and `r max(proj.dat$date)`.
+
+```{r}
+
+proj.dat %>% 
+  leaflet() %>% 
+  addTiles() %>%
+  setView(lng = mean(as.numeric(projects$et_longitude), na.rm=TRUE), 
+          lat = mean(as.numeric(projects$et_latitude), na.rm=TRUE), zoom = 6) %>%
+  addMarkers(clusterOptions = markerClusterOptions(),popup = ~desc) %>%
+  suspendScroll()
+
+```
+
