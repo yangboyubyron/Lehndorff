@@ -51,22 +51,28 @@ map.out<-cz_map %>% left_join(title.24,by=c("CZ"="trans.CZ"))
 #   "13 - Fresno"
 # ))
 
-ggplot(map.out, aes(long, lat, group=group, fill=as.factor(CZ.y))) + 
+map.out$Revisit<-factor(map.out$Revisit,levels = c(
+  "New",
+  "Revisit",
+  "Not Included"
+))
+
+map.plot<-ggplot(map.out, aes(long, lat, group=group, fill=Revisit)) + 
   geom_polygon(alpha=1) +
   geom_path(size=.3,color="black") +
-  geom_path(data=map.out %>% filter(Revisit=="Revisit"),size=.6,color="green")+
+  # geom_path(data=map.out %>% filter(Revisit=="Revisit"),size=.6,color="green")+
   coord_map()+
   theme_void()+
-  labs(fill="Climate Zone",color="Revisit")+
-  # scale_fill_brewer(type = "seq",palette = 1)+
-  scale_color_brewer(type = "qual",palette=2)
+  theme(
+    legend.box.margin = margin(0,4,0,0)
+  )+
+  labs(fill="Audit Type")+
+  scale_fill_manual(
+    values = c(
+      "New"="#73B633",
+      "Revisit"="#095C9C",
+      "Not Included"="light gray"
+    )
+  )
+ggsave(map.plot,file="~/desktop/MF Map.jpg",width = 8,height = 8)
 
-ggplot(map.out %>% mutate(Revisit=ifelse(is.na(Revisit),"Not Included",Revisit)), aes(long, lat, group=group, fill=Revisit)) + 
-  geom_polygon(alpha=1) +
-  geom_path(size=.2,color="black") +
-  # geom_path(data=map.out %>% filter(Revisit=="Revisit"),size=.5,color="green")+
-  coord_equal()+
-  theme_void()+
-  labs(fill="Revisit")+
-  # scale_fill_brewer(type = "div",palette = 4)+
-  scale_color_brewer(type = "qual",palette=2)
