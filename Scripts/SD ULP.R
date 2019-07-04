@@ -91,4 +91,30 @@ agg.code.2$match<-paste(agg.code.2$Latitude,agg.code.2$Longitude)%in%paste(agg.c
 
 table(paste(agg.code.1$Latitude,agg.code.1$Longitude)%in%paste(agg.code.2$Latitude,agg.code.2$Longitude))
 table(paste(agg.code.2$Latitude,agg.code.2$Longitude)%in%paste(agg.code.1$Latitude,agg.code.1$Longitude))
-  
+
+# aggregation by manufacture and date
+man.agg<-SD_ULP_data %>% group_by(ContractorName,InstallDate) %>% summarise(n=n(),bulbs=sum(MeasureQty))
+man.agg.time<-man.agg %>% arrange(InstallDate) %>% group_by(ContractorName) %>% mutate(run=cumsum(bulbs),p.run=run/max(run))
+
+library(ggplot2)
+ggplot(man.agg.time)+
+  geom_point(aes(x=InstallDate,y=run,color=ContractorName))+
+  geom_line(aes(x=InstallDate,y=run,color=ContractorName))+
+  labs(y="Percent Total Bulbs Delivered")
+
+n_distinct(SD_ULP_data$ServiceFullAddress[SD_ULP_data$InstallDate==as.Date("2019-05-21")&SD_ULP_data$ContractorName=="Sunrise Lighting Inc"])
+sum(SD_ULP_data$MeasureQty[SD_ULP_data$InstallDate==as.Date("2019-05-21")&SD_ULP_data$ContractorName=="Sunrise Lighting Inc"])
+
+# agg for qualtrics
+clean.adds<-read.csv("/volumes/Projects Berkeley/428010 - SDG&E ULP Verification/CONFIDENTIAL - Data from Client/Data - Clean Addresses.csv",stringsAsFactors = FALSE)
+
+no.bb<-clean.adds %>% filter(!big.box)
+store.agg<-no.bb %>% group_by(Latitude,Longitude, clean.address,ContractorName,MeasureName) %>% 
+  summarise(total.bulbs=sum(MeasureQty),Name1=unique(CustomerName)[1],Name2=ifelse(n_distinct(CustomerName)>1,unique(CustomerName)[2],"NA")) %>% 
+  mutate(Bulb.Type=paste(ContractorName,MeasureName,sep=" - "),Bulb2=Bulb.Type)
+
+library(tidyr)
+out<-store.agg %>% ungroup() %>% select(Name1,Name2,clean.address,Bulb.Type,Bulb2) 
+
+spreaded<-spread(data=out,key=Bulb.Type,value = Bulb2,fill = "")
+write.csv(spreaded,"/volumes/Projects Berkeley/428010 - SDG&E ULP Verification/CONFIDENTIAL - Data from Client/Data - For Survey.csv")
