@@ -117,4 +117,4 @@ library(tidyr)
 out<-store.agg %>% ungroup() %>% select(Name1,Name2,clean.address,Bulb.Type,Bulb2) 
 
 spreaded<-spread(data=out,key=Bulb.Type,value = Bulb2,fill = "")
-write.csv(spreaded,"/volumes/Projects Berkeley/428010 - SDG&E ULP Verification/CONFIDENTIAL - Data from Client/Data - For Survey.csv")
+# write.csv(spreaded,"/volumes/Projects Berkeley/428010 - SDG&E ULP Verification/CONFIDENTIAL - Data from Client/Data - For Survey.csv")
