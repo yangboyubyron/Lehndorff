@@ -164,7 +164,7 @@ hvac_actual.ws_amics<-error_metrics(full_ws,"hvac_est","ws_amics")
 met_out<-bind_rows(actual.amics,ws_amics.ws_hvac,ws_amics.ws_actual,ws_actual.ws_hvac,ws_hvac.ws_hvmod,hvac_actual.ws_amics)
 
 full_metout<-bind_rows(full_metout,met_out)
-write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
+# write.csv(met_out,paste0("~/desktop/AMI HVAC Write Up/HOPPS-AMI 2/error_metrics_",i,".csv"))
 
 avg_daily<-pred_pre %>%
   filter(as.Date(date)<site_pre_end,as.Date(date)>site_pre_start) %>%
@@ -202,8 +202,8 @@ ggplot(ws_data %>% select(hour,ws_amics,base_amics) %>% reshape2::melt(id.vars="
   # geom_line(data=ws_data,aes(x=hour,y=ws_amics+base))
 
 ws_data<-full_ws %>% filter(date=="2016-06-20") %>% group_by(hour) %>% 
-    summarise(base=mean(base_actual),actual=mean(kwh))
-    # summarise(base=mean(base_hvac),actual=mean(hvac_est))
+    # summarise(base=mean(base_actual),actual=mean(kwh))
+    summarise(base=mean(base_hvac),actual=mean(hvac_est))
 
 ws_calc<-ggplot(ws_data)+
   geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="blue",alpha=.3)+
@@ -211,12 +211,12 @@ ws_calc<-ggplot(ws_data)+
   geom_line(data=ws_data %>% reshape2::melt(id.vars="hour"),aes(x=hour,y=value,color=variable))+
   scale_color_manual(
     breaks=c("base","actual"),
-    labels=c("Baseline","Actual Usage"),
-    # labels=c("Baseline HVAC","Actual HVAC"),
-    values=c("black","blue")
-    # values=c("gray40","blue")
+    # labels=c("Baseline","Actual Usage"),
+    labels=c("Baseline HVAC","Actual HVAC"),
+    # values=c("black","blue")
+    values=c("gray40","blue")
   )+
-  labs(color="Data",y="kWh",x="Hours of June 20th")
+  labs(color="Data",y="kWh",x="Hours of June 20th, 2016")
 
 ggplot(
   full_ws %>% 
