@@ -182,13 +182,16 @@ ws_data<-full_ws %>%
     ws_amics=mean(ws_amics),base_amics=mean(base_amics),
     base=mean(base_actual),actual=mean(kwh),total=ws_hvac+ws_non_hvac+non_ws_hvac+non_non)
 
+# c("#73B633","#2F2860","#095C9C","#5EBCDF","#C1C1C1","#FABC2B")
+
 ggplot(ws_data %>% select(hour,ws_hvac,ws_non_hvac,non_ws_hvac,non_non) %>% reshape2::melt(id.vars="hour"))+
   geom_bar(aes(x=hour,y=value,fill=variable),position = "stack",stat="identity")+
   scale_fill_manual(
     breaks=c("ws_hvac","ws_non_hvac","non_ws_hvac","non_non"),
     labels=c("WS HVAC","WS non-HVAC","Baseline HVAC","Baseline non-HVAC"),
-    values=c("blue","red","gray50","black")
+    values=c("#73B633","#2F2860","#095C9C","#5EBCDF")
   )+
+  theme(legend.position = "bottom")+
   labs(y="kWh",x="Hour",fill="Component")
 
 ggplot(ws_data %>% select(hour,ws_amics,base_amics) %>% reshape2::melt(id.vars="hour"))+
@@ -202,20 +205,22 @@ ggplot(ws_data %>% select(hour,ws_amics,base_amics) %>% reshape2::melt(id.vars="
   # geom_line(data=ws_data,aes(x=hour,y=ws_amics+base))
 
 ws_data<-full_ws %>% filter(date=="2016-06-20") %>% group_by(hour) %>% 
-    # summarise(base=mean(base_actual),actual=mean(kwh))
-    summarise(base=mean(base_hvac),actual=mean(hvac_est))
+    summarise(base=mean(base_actual),actual=mean(kwh))
+    # summarise(base=mean(base_hvac),actual=mean(hvac_est))
 
 ws_calc<-ggplot(ws_data)+
   geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="blue",alpha=.3)+
+  # geom_ribbon(aes(x=hour,ymin=base,ymax=actual),fill="#73B633",alpha=.3)+
   # geom_ribbon(aes(x=hour,ymin=0,ymax=base),fill="black",alpha=.3)+
   geom_line(data=ws_data %>% reshape2::melt(id.vars="hour"),aes(x=hour,y=value,color=variable))+
   scale_color_manual(
     breaks=c("base","actual"),
-    # labels=c("Baseline","Actual Usage"),
-    labels=c("Baseline HVAC","Actual HVAC"),
-    # values=c("black","blue")
-    values=c("gray40","blue")
+    labels=c("Baseline","Actual Usage"),
+    # labels=c("Baseline HVAC","Actual HVAC"),
+    values=c("black","blue")
+    # values=c("#095C9C","#73B633")
   )+
+  theme(legend.position = "bottom")+
   labs(color="Data",y="kWh",x="Hours of June 20th, 2016")
 
 ggplot(
@@ -229,7 +234,8 @@ ggplot(
     labels=c("WS AMICS","WS HVAC"),
     values=c("blue","red")
   )+
-  labs(color="Data",y="Weather-Sensitive Change (kWh)",x="Hours of June 20th")
+  theme(legend.position = "bottom")+
+  labs(color="Data",y="Weather-Sensitive Change (kWh)",x="Hours of June 20th, 2016")
 
 # ggplot(full_ws)+
 #   geom_line(aes(x=readdate,y=kwh),color="red")+
