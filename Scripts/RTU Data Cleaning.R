@@ -732,6 +732,11 @@ new.out.dedupe<-new.out %>%
   summarise(Address=first(CUSTOMER.ADDRESS),Unique.Adds=n_distinct(CUSTOMER.ADDRESS),Qualifying.Units=n()) %>% 
   select(CUSTOMER.NAME,Address,CUSTOMER.CITY,Zip.Code,CZ,Unique.Adds,Qualifying.Units) %>% arrange(CUSTOMER.NAME)
 
+# new.out.dedupe<-new.out %>% 
+#   group_by(CUSTOMER.NAME,CUSTOMER.CITY,Zip.Code,CZ,Address=CUSTOMER.ADDRESS)) %>% 
+#   summarise(Unique.Adds=n_distinct(CUSTOMER.ADDRESS),Qualifying.Units=n()) %>% 
+#   select(CUSTOMER.NAME,Address,CUSTOMER.CITY,Zip.Code,CZ,Unique.Adds,Qualifying.Units) %>% arrange(CUSTOMER.NAME)
+
 to.check<-new.out.dedupe$Address
 check<-PrevSamp %>% filter(grepl(paste(to.check,collapse = "|"),cleanest,ignore.case = TRUE))
 
