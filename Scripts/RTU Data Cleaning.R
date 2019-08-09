@@ -974,19 +974,38 @@ new.out.dedupe<-new.out %>%
   summarise(Address=first(prem_addr_ln1_txt),Unique.Adds=n_distinct(prem_addr_ln1_txt),Qualifying.Units=n()) %>% 
   select(prsn_full_nm,do_bus_as_nm,Address,prem_cty_nm,prem_zip_5_dgt,CZ,Unique.Adds,Qualifying.Units) %>% arrange(prsn_full_nm,do_bus_as_nm)
 
-# new.out.dedupe<-new.out %>% 
-#   group_by(CUSTOMER.NAME,CUSTOMER.CITY,Zip.Code,CZ,Address=CUSTOMER.ADDRESS)) %>% 
-#   summarise(Unique.Adds=n_distinct(CUSTOMER.ADDRESS),Qualifying.Units=n()) %>% 
-#   select(CUSTOMER.NAME,Address,CUSTOMER.CITY,Zip.Code,CZ,Unique.Adds,Qualifying.Units) %>% arrange(CUSTOMER.NAME)
+# actual permit data
+library(readxl)
+X2019_06_28_PublicRecords.no <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Novato") %>% select(Address) %>% mutate(City="Novato")
+X2019_06_28_PublicRecords.kc <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Kern Cty")%>% select(Address)
+X2019_06_28_PublicRecords.pl <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Pleasanton") %>% select(Address)
+X2019_06_28_PublicRecords.ri <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Richmond") %>% select(Address=`Site Address`) %>% mutate(City="Richmond")
+X2019_06_28_PublicRecords.cc <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "ContraCosta Cty") %>% select(Address)
+X2019_06_28_PublicRecords.yc <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Yolo Cty") %>% select(Address=ADDRESS) %>% mutate(City="Yolo City")
+X2019_06_28_PublicRecords.sr <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "SanRafael") %>% select(Address,City)
+X2019_06_28_PublicRecords.al <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Alameda") %>% select(Address)
+X2019_06_28_PublicRecords.rc <- read_excel("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/2019_06_28_PublicRecords.xlsx", 
+    sheet = "Redwood City") %>% select(Address) %>% mutate(City="Redwood City")
 
-to.check<-new.out.dedupe$Address
-check<-PrevSamp %>% filter(grepl(paste(to.check,collapse = "|"),cleanest,ignore.case = TRUE))
+all.permit<-bind_rows(
+  X2019_06_28_PublicRecords.no,X2019_06_28_PublicRecords.kc,X2019_06_28_PublicRecords.pl,X2019_06_28_PublicRecords.ri,X2019_06_28_PublicRecords.cc,
+  X2019_06_28_PublicRecords.yc,X2019_06_28_PublicRecords.sr,X2019_06_28_PublicRecords.al,X2019_06_28_PublicRecords.rc
+) %>% distinct()
 
-# already sent
-already.sent<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/032519 Sample/032519 Sample.csv",stringsAsFactors = FALSE)
+permit.data$for.match<-gsub(" ","",gsub(" STE "," ",permit.data$ORIG_ADDRESS,fixed = TRUE),fixed = TRUE)
 
-# not already sent
-not.sent<-new.out.dedupe %>% filter(
-  !paste(Address,prem_cty_nm,prem_zip_5_dgt,CZ)%in%
-    paste(already.sent$Address,already.sent$CUSTOMER.CITY,already.sent$Zip.Code,already.sent$CZ)
-)
+# all.permit$for.match<-substr(all.permit$Address,0,grep(",",all.permit$Address))
+all.permit$for.match<-gsub(" ","",all.permit$Address,fixed = TRUE)
+all.permit$for.match<-gsub("-","",all.permit$for.match,fixed = TRUE)
+
+
+all.permit$match<-all.permit$for.match%in%unique(permit.data$for.match)
+table(all.permit$match)
