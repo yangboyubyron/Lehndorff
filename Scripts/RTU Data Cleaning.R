@@ -998,9 +998,78 @@ X2019_06_28_PublicRecords.rc <- read_excel("/volumes/Projects Berkeley/401006 - 
 all.permit<-bind_rows(
   X2019_06_28_PublicRecords.no,X2019_06_28_PublicRecords.kc,X2019_06_28_PublicRecords.pl,X2019_06_28_PublicRecords.ri,X2019_06_28_PublicRecords.cc,
   X2019_06_28_PublicRecords.yc,X2019_06_28_PublicRecords.sr,X2019_06_28_PublicRecords.al,X2019_06_28_PublicRecords.rc
-) %>% distinct()
+) %>% distinct() %>% filter(!is.na(Address)) %>% mutate(paste.ad=paste(Address,City))
 
-permit.data$for.match<-gsub(" ","",gsub(" STE "," ",permit.data$ORIG_ADDRESS,fixed = TRUE),fixed = TRUE)
+all.permit$fullad<-ifelse(is.na(all.permit$City),all.permit$Address,all.permit$paste.ad)
+
+all.permit$cleanest<-tolower(gsub("[[:punct:]]*","",all.permit$fullad))
+all.permit$cleanest<-gsub(" north "," n ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" south "," s ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" east "," e ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" west "," w ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" northwest "," nw ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" northeast "," ne ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" southwest "," sw ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" road "," rd ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" drive "," dr ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" avenue "," ave ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" parkway "," pkwy ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" boulevard "," blvd ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" street "," st ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" place "," pl ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" court "," ct ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" way "," wy ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" highway "," hwy ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" suite "," ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" ste "," ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" hse "," ",all.permit$cleanest)
+all.permit$cleanest<-gsub(" #"," ",all.permit$cleanest,fixed = TRUE)
+all.permit$cleanest<-gsub(" sp "," ",all.permit$cleanest)
+
+# write.csv(all.permit,"~/desktop/permits.csv",row.names = FALSE)
+# write.csv(permit.data %>% select(full.name,fullad,cleanest) %>% distinct(),"~/desktop/contacts.csv",row.names = FALSE)
+table(all.permit$cleanest%in%permit.data$cleanest)
+
+permit.code<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/permits_geocodio.csv",stringsAsFactors = FALSE) %>% 
+  mutate(ad.build=paste(Number,Street,City.1,State,Zip))
+permit.code$ad.build[permit.code$Accuracy.Score<.6]<-"GEOCODE FAIL - PERMIT"
+
+contact.code<-read.csv("/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/contacts_geocodio.csv",stringsAsFactors = FALSE)%>% 
+  mutate(ad.build=paste(Number,Street,City,State,Zip),cleanest2=tolower(paste(Number,Street,City)))
+contact.code$ad.build[contact.code$Accuracy.Score<.6]<-"CODE FAIL - CONTACT"
+table(permit.code$ad.build%in%contact.code$ad.build)
+
+match.2<-permit.code %>% filter(!ad.build%in%contact.code$ad.build) %>% mutate(check2=cleanest%in%contact.code$cleanest2)
+table(match.2$check2)
+
+match.3<-match.2 %>% filter(!check2)
+
+permits.w.contact<-permit.code %>% 
+  left_join(contact.code,"ad.build",suffix=c(".permit",".best")) %>% 
+  left_join(contact.code,c("cleanest.permit"="cleanest2"),suffix=c("",".good"))
+permits.w.contact$contact.match<-ifelse(!is.na(permits.w.contact$cleanest.best),permits.w.contact$cleanest.best,permits.w.contact$cleanest)
+sum(is.na(permits.w.contact$contact.match))==nrow(match.3)
+
+contact.match<-unique(permits.w.contact$contact.match)
+table(contact.match%in%PrevSamp$cleanest)
+table(contact.match%in%Sample2018$cleanest)
+
+contacts.from.permits<-permit.data %>% 
+  filter(cleanest%in%contact.match&!cleanest%in%PrevSamp$cleanest&!cleanest%in%Sample2018$cleanest) %>% 
+  left_join(contact.code %>% select(-cleanest),by=c("full.name","fullad"))
+
+contact.fields<-contacts.from.permits %>% filter(!local_government) %>% 
+  select(
+    Contact.Name=prsn_full_nm,DBA=do_bus_as_nm,
+    Phone.1=prsn_phone_1,Phone.2=prsn_phone_2,Email=prsn_email,CZ,
+    Address=prem_addr_ln1_txt,City=prem_cty_nm,Zip=prem_zip_5_dgt,
+    res.flag=res_ind,Latitude,Longitude) %>% distinct()
+# write.csv(contact.fields,"/volumes/Projects Berkeley/401006 - PG&E MSA and Tech Assistance CWA/PG&E RTU Recruitment/Data - Confidential/Permit_Contacts.csv",row.names = FALSE)
+
+table(contact.fields$Address%in%PrevSamp$AddressLine1)
+
+zzz<-contact.fields %>% group_by(Address,City,Zip,res.flag) %>% summarise(n=n())
+# permit.data$for.match<-gsub(" ","",gsub(" STE "," ",permit.data$ORIG_ADDRESS,fixed = TRUE),fixed = TRUE)
 
 # all.permit$for.match<-substr(all.permit$Address,0,grep(",",all.permit$Address))
 all.permit$for.match<-gsub(" ","",all.permit$Address,fixed = TRUE)
