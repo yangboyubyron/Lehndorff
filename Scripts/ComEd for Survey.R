@@ -43,3 +43,19 @@ survey.out.sum<-survey.out %>%
 
 # write.csv(survey.out,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 2/ComEd sample files with PPI/Survey Frame External 0507.csv",row.names=FALSE)
 # write.csv(survey.pii,"/volumes/Projects/466002 - ComEd Needs Assessment/Confidential Data/Task 2/ComEd sample files with PPI/Survey Frame INTERNAL 0507.csv",row.names=FALSE)
+
+# Survey weights after survey completion
+strata.counts<-frame.rand %>% group_by(Sample.Group) %>% summarise(pop.n=n())  
+
+survey.results<-readxl::read_excel("/volumes/Projects/466002 - ComEd Needs Assessment/Task 2 - Survey/Data/ComEd Final Data Combined.xlsx",sheet = "ComEd Final Data Oct 3")
+n_distinct(survey.results$ID)==nrow(survey.results)
+table(survey.results$ID%in%frame.rand$ID)
+table(survey.results$Sample.Group%in%strata.counts$Sample.Group)
+
+survey.weights<-survey.results %>% select(ID,Sample.Group) %>% 
+  group_by(Sample.Group) %>% mutate(surv.count=n()) %>% 
+  left_join(strata.counts) %>% mutate(weight=pop.n/surv.count) %>% 
+  select(ID,Sample.Group,weight)
+table(survey.weights$ID%in%survey.results$ID)
+# write.csv(survey.weights,"/volumes/Projects/466002 - ComEd Needs Assessment/Task 2 - Survey/Data/Survey Weights.csv",row.names = FALSE)
+
