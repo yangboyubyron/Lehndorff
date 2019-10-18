@@ -52,10 +52,13 @@ n_distinct(survey.results$ID)==nrow(survey.results)
 table(survey.results$ID%in%frame.rand$ID)
 table(survey.results$Sample.Group%in%strata.counts$Sample.Group)
 
-survey.weights<-survey.results %>% select(ID,Sample.Group) %>% 
+# Exclude sys_RespStatus == 5
+
+survey.weights<-survey.results %>% filter(sys_RespStatus==5) %>% select(ID,Sample.Group) %>% 
   group_by(Sample.Group) %>% mutate(surv.count=n()) %>% 
-  left_join(strata.counts) %>% mutate(weight=pop.n/surv.count) %>% 
+  left_join(strata.counts) %>% mutate(weight=pop.n/surv.count/sum(strata.counts$pop.n)) %>% 
   select(ID,Sample.Group,weight)
 table(survey.weights$ID%in%survey.results$ID)
+sum(survey.weights$weight)==1
 # write.csv(survey.weights,"/volumes/Projects/466002 - ComEd Needs Assessment/Task 2 - Survey/Data/Survey Weights.csv",row.names = FALSE)
 
