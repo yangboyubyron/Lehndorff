@@ -53,7 +53,7 @@ t8.plot<-ggplot(rwlr.agg)+
   scale_fill_manual(values=levels.t8)+
   scale_y_continuous(labels = scales::percent)+
   labs(y="Percent of Market",fill="Lamp Type")
-ggsave(t8.plot,file="~/desktop/t8.plot.jpg",device = "jpeg",width = 7,height=3.8)
+# ggsave(t8.plot,file="~/desktop/t8.plot.jpg",device = "jpeg",width = 7,height=3.8)
 
 # ggplot(rwlr.agg)+
 #   geom_line(aes(x=`Sales Year`,y=Total.bulbs,color=lamp.group))+
@@ -105,5 +105,5 @@ map.plot<-ggplot(region.dat)+
     strip.background.y = element_rect(fill="gray70"),
     text = element_text(size = 12))+
   coord_map()
-ggsave(map.plot,file="~/desktop/RWLR_map.jpg",device = "jpeg",width = 7, height = 4)
+# ggsave(map.plot,file="~/desktop/RWLR_map.jpg",device = "jpeg",width = 7, height = 4)
  
