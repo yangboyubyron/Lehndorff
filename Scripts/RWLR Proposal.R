@@ -2,7 +2,7 @@ library(readxl)
 library(dplyr)
 library(ggplot2)
 
-rwlr.data<- read_excel("/volumes/marketing/Proposals/NEEA/NEEA RWLR LTMT/RFP/Additional Documents/Detailed_2013-2017_Lighting_Sales_Data_Tables.xlsx", 
+rwlr.data<- read_excel("/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/RFP/Additional Documents/Detailed_2013-2017_Lighting_Sales_Data_Tables.xlsx", 
     sheet = "Data - Machine Readable")
 
 # linear
@@ -53,7 +53,7 @@ t8.plot<-ggplot(rwlr.agg)+
   scale_fill_manual(values=levels.t8)+
   scale_y_continuous(labels = scales::percent)+
   labs(y="Percent of Market",fill="Lamp Type")
-# ggsave(t8.plot,file="~/desktop/t8.plot.jpg",device = "jpeg",width = 7,height=3.8)
+# ggsave(t8.plot,file="/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/T8_Plot.jpg",device = "jpeg",width = 7,height=3.8)
 
 # ggplot(rwlr.agg)+
 #   geom_line(aes(x=`Sales Year`,y=Total.bulbs,color=lamp.group))+
@@ -99,11 +99,11 @@ map.plot<-ggplot(region.dat)+
   # scale_fill_brewer(type="div",palette = 6)+
   # scale_fill_gradient2(high="dark green",low="blue",mid="white",trans="log",midpoint = 0,
   #   breaks=round(2^seq(-.8,3,.8),4),labels=paste(round(2^seq(-.8,3,.8)*100,0),"%"))+
-  theme_map()+
+  ggthemes::theme_map()+
   theme(
     legend.position = "bottom",
     strip.background.y = element_rect(fill="gray70"),
     text = element_text(size = 12))+
   coord_map()
-# ggsave(map.plot,file="~/desktop/RWLR_map.jpg",device = "jpeg",width = 7, height = 4)
+# ggsave(map.plot,file="/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/RWLR_map.jpg",device = "jpeg",width = 7, height = 4)
  
