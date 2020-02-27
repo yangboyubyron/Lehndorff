@@ -7,7 +7,10 @@ EEcolors7<- c("#73B633","#2F2860","#095C9C","#5EBCDF","#C1C1C1","#FABC2B","#BBEC
 plot_dat<-read_excel("/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/LI TOU Impact.xlsx")
 plot_dat$point<-as.numeric(substr(plot_dat$Text,1,(regexpr("±",plot_dat$Text,fixed = TRUE)-2)))
 plot_dat$error<-as.numeric(substr(plot_dat$Text,(regexpr("±",plot_dat$Text,fixed = TRUE)+1),100))
-plot_dat$Type<-factor(plot_dat$Type,levels = c("TOU","PCT","PCT with Eco+"))
+plot_dat$Type[plot_dat$Type=="PCT"]<-"Ecobee"
+plot_dat$Type[plot_dat$Type=="PCT with Eco+"]<-"Ecobee with eco+"
+
+plot_dat$Type<-factor(plot_dat$Type,levels = c("TOU","Ecobee","Ecobee with eco+"))
 
 chart_impact<-function(data){
   output<-ggplot(data)+
