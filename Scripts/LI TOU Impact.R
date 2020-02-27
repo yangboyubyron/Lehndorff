@@ -56,8 +56,9 @@ plot_dat2$error[is.na(plot_dat2$point)]<-NA
 plot_dat2$point[is.na(plot_dat2$point)]<-as.numeric(plot_dat2$Text[is.na(plot_dat2$point)])
 
 plot_dat2$Type[plot_dat2$Type=="Total Change"]<-"Total\nChange"
-plot_dat2$Type<-factor(plot_dat2$Type,levels = c("TOU","PCT","Total\nChange"))
-plot_dat2$Type<-factor(plot_dat2$Type,levels = c("TOU","PCT","Total\nChange"))
+plot_dat2$Type[plot_dat2$Type=="PCT"]<-"Ecobee"
+
+plot_dat2$Type<-factor(plot_dat2$Type,levels = c("TOU","Ecobee","Total\nChange"))
 
 all_tc<-chart_impact2(data = plot_dat2 %>% filter(Time=="All"))
 ggsave(all_tc,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/all_tc.jpg",device="jpeg",width = 6,height=4)
@@ -71,9 +72,12 @@ plot_dat3$error<-as.numeric(substr(plot_dat3$Text,(regexpr("±",plot_dat3$Text,f
 plot_dat3$error[is.na(plot_dat3$point)]<-NA
 plot_dat3$point[is.na(plot_dat3$point)]<-as.numeric(plot_dat3$Text[is.na(plot_dat3$point)])
 
-plot_dat3$Type[plot_dat3$Type=="PCT with Eco+"]<-"PCT with\nEco+"
+plot_dat3$Type[plot_dat3$Type=="PCT with Eco+"]<-"Ecobee with\nEco+"
 plot_dat3$Type[plot_dat3$Type=="Total Change"]<-"Total\nChange"
-plot_dat3$Type<-factor(plot_dat3$Type,levels = c("TOU","PCT with\nEco+","Total\nChange"))
+plot_dat3$Type[plot_dat3$Type=="PCT"]<-"Ecobee"
+
+plot_dat3$Type<-factor(plot_dat3$Type,levels = c("TOU","Ecobee with\nEco+","Total\nChange"))
+
 
 all_tc2<-chart_impact2(data = plot_dat3 %>% filter(Time=="All"))
 ggsave(all_tc2,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/all_tc2.jpg",device="jpeg",width = 6,height=4)
