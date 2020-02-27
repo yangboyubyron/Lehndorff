@@ -13,4 +13,9 @@ ted.fields<-w_rate %>% ungroup() %>%
     )
 
 for.ted<-left_join(ted.data,ted.fields,by="ID")
-write.csv(for.ted,"~/desktop/ComEd/Table for Ted.csv",row.names = FALSE)
+# write.csv(for.ted,"~/desktop/ComEd/Table for Ted.csv",row.names = FALSE)
+
+TT.fields<-w_rate %>% ungroup() %>% 
+  select(ID,avg)
+for.TT<-left_join(ted.data %>% select(ID),TT.fields,by="ID") %>% mutate(Annual=avg*12)
+# write.csv(for.TT,"/volumes/Projects/466002 - ComEd Needs Assessment/Task 3 - Interviews/Data/All_survey_usage.csv",row.names = FALSE)
