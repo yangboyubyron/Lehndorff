@@ -18,17 +18,17 @@ chart_impact<-function(data){
     geom_bar(aes(x=Utility,y=point,fill=Utility),stat = "identity",width = .75)+
     geom_errorbar(aes(x=Utility,ymin=point-error,ymax=point+error),size=0.15,width=.6)+
     facet_grid(.~Type)+
-    theme(text=element_text(family="Gill Sans MT"), plot.title=element_text(color='#666633', size=12, hjust = 0.5), legend.position="bottom")+
+    theme(text=element_text(family="Gill Sans"), plot.title=element_text(color='#666633', size=12, hjust = 0.5), legend.position="bottom")+
     labs(y="Impact (kWh)")+
     scale_fill_manual(values = EEcolors7[1:3])
     
   return(output)
 }
 
-all_plot<-chart_impact(data=plot_dat %>% filter(Time=="All"))
+all_plot<-chart_impact(data=plot_dat %>% filter(Time=="All"))+labs(y="Daily Usage Impact (kWh)")
 ggsave(all_plot,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/all_plot.jpg",device="jpeg",width = 6,height=4)
 
-peak_plot<-chart_impact(plot_dat %>% filter(Time=="Peak"))
+peak_plot<-chart_impact(plot_dat %>% filter(Time=="Peak"))+labs(y="Peak Usage Impact (kWh)")
 ggsave(peak_plot,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/peak_plot.jpg",device="jpeg",width = 6,height=4)
 
 chart_impact2<-function(data){
@@ -41,7 +41,7 @@ chart_impact2<-function(data){
     geom_bar(aes(x=Type,y=point,fill=Utility),stat = "identity",width = .75)+
     geom_errorbar(aes(x=Type,ymin=point-error,ymax=point+error),size=0.15,width=.6)+
     facet_grid(.~Utility)+
-    theme(text=element_text(family="Gill Sans MT"), plot.title=element_text(color='#666633', size=12, hjust = 0.5), legend.position="bottom")+
+    theme(text=element_text(family="Gill Sans"), plot.title=element_text(color='#666633', size=12, hjust = 0.5), legend.position="bottom")+
     labs(y="Impact (kWh)",x="Program Intervention")+
     scale_fill_manual(values = EEcolors7[1:3])+
     guides(fill=FALSE)
@@ -60,10 +60,10 @@ plot_dat2$Type[plot_dat2$Type=="PCT"]<-"Ecobee"
 
 plot_dat2$Type<-factor(plot_dat2$Type,levels = c("TOU","Ecobee","Total\nChange"))
 
-all_tc<-chart_impact2(data = plot_dat2 %>% filter(Time=="All"))
+all_tc<-chart_impact2(data = plot_dat2 %>% filter(Time=="All"))+labs(y="Daily Usage Impact (kWh)")
 ggsave(all_tc,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/all_tc.jpg",device="jpeg",width = 6,height=4)
 
-peak_tc<-chart_impact2(data = plot_dat2 %>% filter(Time=="Peak"))
+peak_tc<-chart_impact2(data = plot_dat2 %>% filter(Time=="Peak"))+labs(y="Peak Usage Impact (kWh)")
 ggsave(peak_tc,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/peak_tc.jpg",device="jpeg",width = 6,height=4)
 
 plot_dat3<-read_excel("/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/LI TOU Impact.xlsx",sheet=3)
@@ -79,8 +79,8 @@ plot_dat3$Type[plot_dat3$Type=="PCT"]<-"Ecobee"
 plot_dat3$Type<-factor(plot_dat3$Type,levels = c("TOU","Ecobee with\nEco+","Total\nChange"))
 
 
-all_tc2<-chart_impact2(data = plot_dat3 %>% filter(Time=="All"))
+all_tc2<-chart_impact2(data = plot_dat3 %>% filter(Time=="All"))+labs(y="Daily Usage Impact (kWh)")
 ggsave(all_tc2,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/all_tc2.jpg",device="jpeg",width = 6,height=4)
 
-peak_tc2<-chart_impact2(data = plot_dat3 %>% filter(Time=="Peak"))
+peak_tc2<-chart_impact2(data = plot_dat3 %>% filter(Time=="Peak"))+labs(y="Peak Usage Impact (kWh)")
 ggsave(peak_tc2,file="/Volumes/Projects Berkeley/401037 - PGE LI PCTs/Data - CONFIDENTIAL/HL Plot data/peak_tc2.jpg",device="jpeg",width = 6,height=4)
