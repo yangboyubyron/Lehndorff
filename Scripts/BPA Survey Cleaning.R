@@ -14,18 +14,23 @@ bind_for_excel<-function(x,y){
   
 }
 
-sent_surveys<-readxl::read_xlsx("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - residential HVAC analysis/Res DHP Customer survey/Contact Data/Survey Intake.xlsx") %>% filter(!is.na(CustomerID))
+sent_surveys<-readxl::read_xlsx("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - residential HVAC analysis/Res DHP Customer survey/Contact Data/Survey Intake.xlsx") %>% 
+  filter(!is.na(CustomerID))
 
 raw_data<-read.csv("~/desktop/BPA/qualtrics_data.csv",stringsAsFactors = FALSE)
 
-col_desc<-raw_data[1,]
+col_desc<-raw_data[1,] 
+data_fields<-data_frame(`Question_Number`=colnames(col_desc),`Question`=as.character(as.vector(col_desc)))
+write.csv(data_fields,"/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Fields.csv",row.names = FALSE)
 
 survey_data<-raw_data %>% filter(!is.na(as.numeric(Duration..in.seconds.)))
-write.csv(survey_data,"~/desktop/BPA/temp_data.csv")
+write.csv(survey_data,"/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Data.csv")
 
-survey_data<-read.csv("~/desktop/BPA/temp_data.csv",stringsAsFactors = FALSE)
+survey_data<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Data.csv",stringsAsFactors = FALSE)
 table(survey_data$Q59_1_TEXT%in%sent_surveys$CustomerID,exclude = NULL)
 table(sent_surveys$CustomerID%in%survey_data$Q59_1_TEXT,as.numeric(sent_surveys$Response),exclude = NULL)
+
+survey_weights<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - residential HVAC analysis/Res DHP Customer survey/Contact Data/survey_weights.csv",stringsAsFactors = FALSE)
 
 model_results<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/BPA DHP Usage Data.csv")
 
@@ -105,12 +110,15 @@ for(i in indep_list){
 model_survey<-inner_join(model_results,survey_data,by=c("CustomerID"="Q59_1_TEXT")) %>% 
   select(CustomerID:vbdd_savings,all_of(c(indep_list,dep_list,NEB_list)))
 
+# savings v usage change
+
+
 test_model<-lm(vbdd_savings ~ Q22  + Q23 +Q30  +Q40 +  Q41   + Q52  + Q54  + Q57_2 + Q43  + Q45_2,model_survey)
 summary(test_model)
 
 ggplot(model_survey)+
   geom_histogram(aes(x=vbdd_savings),binwidth = 5)+
-  facet_grid(Q42~.)+
+  facet_grid(Q22~.)+
   theme(strip.text.y = element_text(angle = 0))
 
 test<-survey_data %>% select(a="Q42",b="Q28")
