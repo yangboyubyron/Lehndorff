@@ -23,7 +23,8 @@ col_desc<-raw_data[1,]
 data_fields<-data_frame(`Question_Number`=colnames(col_desc),`Question`=as.character(as.vector(col_desc)))
 write.csv(data_fields,"/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Fields.csv",row.names = FALSE)
 
-survey_data<-raw_data %>% filter(!is.na(as.numeric(Duration..in.seconds.)))
+survey_data<-raw_data %>% filter(!is.na(as.numeric(Duration..in.seconds.))) %>% filter(ResponseId!="R_2Sug1qiN2K40Jhi")
+survey_data$Q59_1_TEXT[survey_data$ResponseId=="R_cIojC5XnBTsvfTX"]<-2687
 write.csv(survey_data,"/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Data.csv")
 
 survey_data<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_Data.csv",stringsAsFactors = FALSE)
@@ -31,6 +32,10 @@ table(survey_data$Q59_1_TEXT%in%sent_surveys$CustomerID,exclude = NULL)
 table(sent_surveys$CustomerID%in%survey_data$Q59_1_TEXT,as.numeric(sent_surveys$Response),exclude = NULL)
 
 survey_weights<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - residential HVAC analysis/Res DHP Customer survey/Contact Data/survey_weights.csv",stringsAsFactors = FALSE)
+table(survey_data$Q59_1_TEXT%in%survey_weights$CustomerID)
+
+data_utility<-left_join(survey_data,survey_weights,by=c("Q59_1_TEXT"="CustomerID"))
+# write.csv(data_utility,"/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/Survey_data_weight.csv",row.names=FALSE)
 
 model_results<-read.csv("/volumes/Projects/420002 - BPA Impact Evaluation/TO 1 - Residential HVAC analysis/Res DHP customer survey/BPA DHP Usage Data.csv")
 
