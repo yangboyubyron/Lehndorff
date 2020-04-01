@@ -84,7 +84,7 @@ for (i in 1:7){
 print(i)
   
 load(paste0("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/Outputs/amics_ttow_id",i,".Rdata"))
-load(paste0("~/desktop/AMI HVAC Write Up/AMI HVAC Outputs/amics_ttow_id",i,".Rdata"))
+load(paste0("/volumes/Projects/~ Closed Projects/419012 - SCE HOPPs AMI/Data/AMI HVAC Outputs/amics_ttow_id",i,".Rdata"))
 
 pred_pre_hvac$date2<-as.Date(pred_pre_hvac$date)
 pred_pre_hvac$hour2<-as.numeric(pred_pre_hvac$hour)-1
