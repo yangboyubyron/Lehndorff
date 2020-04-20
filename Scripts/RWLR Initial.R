@@ -1,13 +1,13 @@
 library(dplyr)
 library(lubridate)
 library(ggplot2)
-library(xlsx)
+library(readxl)
 
 setwd("/Volumes/Projects/416044 - NEEA RWLR LTMT/Data/CONFIDENTIAL/")
 
 parts<-read.csv("51301_2018-2019_RW_Participant_Data.csv",stringsAsFactors = FALSE)
 # other.old<-read.xlsx("51301_2018_Non-Res_Lighting_Survey_(RW_Only).xlsx",sheetIndex = 1)
-other<-read.xlsx("2018 Non-Res Lighting Data (including TLEDs).xlsx",sheetIndex = 1)
+other<-read_xlsx("2018 Non-Res Lighting Data (including TLEDs).xlsx",sheet = 1)
 
 parts.clean<-parts %>% 
   filter(Category%in%c("32W","28W","25W","T8LED4ft")) %>%
@@ -37,6 +37,10 @@ LS.2019<-parts.clean %>%
 
 LS.weights<-full_join(LS.2018,LS.2019,by="Distributor",suffix=c("_2018","_2019"))
 # write.csv(LS.weights,"Weights for Participant Analysis.csv",row.names = FALSE)
+
+DI1_part<-LS.weights %>% 
+  mutate(LFL_2018=Total_2018*(1-p.TLED_2018),RW_2018=(p.28_2018+p.25_2018)/(1-p.TLED_2018),RW_2019=(p.28_2019+p.25_2019)/(1-p.TLED_2019)) %>% 
+  select(Distributor,LFL_2018,RW_2018,RW_2019)
 
 LS.2018.2<-parts.clean %>% 
   filter(!is.na(Distributor)) %>% 
@@ -88,6 +92,26 @@ NP.Market.State<-other %>%
   group_by(Part="Non-Part",Year=Sales_Year,State=substr(variable,1,2)) %>% 
   summarise(Total=sum(value),p.32=sum(value[Subcategory=="32W"])/Total,p.28=sum(value[Subcategory=="28W"])/Total,p.25=sum(value[Subcategory=="25W"])/Total,p.TLED=sum(value[General_Category=="LED Tubes"])/Total)
   
+zzz<-other %>% 
+  filter(General_Category!="T5"&Subcategory!="T5 Replacements"&Subcategory!="Other") %>% 
+  filter(!Company%in%c("CED - Big Sky Division","CED - Cascade Division","CED - Columbia Division","CED - Puget Sound Division","Eoff","Interstate",
+    "Grainger","Graybar","North Coast Electric","Pacific Lamp & Supply","Platt","Portland Lighting, Inc.","Stoneway","United Lamp Supply")) %>% 
+  select(-Extrapolation_Flag) %>% 
+  reshape2::melt(id.vars=c("General_Category", "Dimension", "Company", "Subcategory","Sales_Year")) %>% 
+  filter(variable!="Sales_Qty") %>% 
+  group_by(Part=Company,Year=Sales_Year) %>% 
+  summarise(Total=sum(value),p.32=sum(value[Subcategory=="32W"])/Total,p.28=sum(value[Subcategory=="28W"])/Total,p.25=sum(value[Subcategory=="25W"])/Total,p.TLED=sum(value[General_Category=="LED Tubes"])/Total)
+  
+tled_only<-zzz %>% 
+  group_by(Part) %>% 
+  filter(Year==max(Year)) %>% 
+  filter(p.TLED==1)
+
+full_line<-zzz %>% 
+  filter(!Part%in%tled_only$Part) %>% 
+  group_by(Year) %>% 
+  summarise(Bulbs=sum(Total),p.32=weighted.mean(p.32,Total),p.28=weighted.mean(p.28,Total),p.25=weighted.mean(p.25,Total),p.TLED=weighted.mean(p.TLED,Total)) %>% 
+  mutate(lfl.32=p.32/(1-p.TLED))
 
 zzz<-other %>% 
   filter(General_Category!="T5"&Subcategory!="T5 Replacements") %>% 

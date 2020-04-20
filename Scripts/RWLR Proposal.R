@@ -26,6 +26,13 @@ ggplot(rwlr.agg1)+
   facet_grid(State~.,scales = "free")+
   labs(y="Bulbs from All Sources",fill="Lamp Type")
 
+# Market Penetration
+MP<-relevant.data1 %>% 
+  filter(lamp.group!="All Other LFL") %>% 
+  group_by(`Sales Year`) %>% 
+  summarise(Total=sum(`Sales Qty`),p.32=sum(`Sales Qty`[lamp.group=="T8 - 32W"])/Total,p.RW=sum(`Sales Qty`[lamp.group=="T8 - Reduced Wattage"])/Total,p.TLED=sum(`Sales Qty`[lamp.group=="LED Tubes"])/Total) %>% 
+  mutate(lfl.32=p.32/(1-p.TLED))
+
 # T8
 relevant.data<-rwlr.data %>% filter(`Lighting Technology Type`=="Linear Fluorescent") %>% 
   mutate(T8=ifelse(grepl("T8",`General Category`),"T8",""),Wattage=ifelse(Subcategory%in%c("32W","25W","28W"),Subcategory,"Other"),lamp.group=ifelse(T8=="T8",paste(T8,"-",Wattage),`General Category`)) %>% filter(T8=="T8")
