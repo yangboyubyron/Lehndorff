@@ -20,6 +20,8 @@ other<-read_xlsx("2018 Non-Res Lighting Data (including TLEDs).xlsx",sheet = 1)
 old.data<- read_excel("/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/RFP/Additional Documents/Detailed_2013-2017_Lighting_Sales_Data_Tables.xlsx", 
     sheet = "Data - Machine Readable")
 
+updated_data<-read_csv("/volumes/Projects/416044 - NEEA RWLR LTMT/Data/Absolute_Sales_Region_data.csv")
+
 # Participants combined
 parts_comb<-parts_2018 %>% 
   filter(year(Date)==2018) %>% 
@@ -120,27 +122,32 @@ table(relevant.data1$lamp.group)
 
 relevant.data1$lamp.group[relevant.data1$lamp.group%in%c("T12","T5","T8 - Other")]<-"All Other LFL"
 
-MP_old<-relevant.data1 %>% 
-  filter(lamp.group!="All Other LFL") %>% 
+MP_old<-updated_data %>% 
+  filter(!Category%in%c("T12","T5","T8LED4FT")) %>% 
+  # filter(lamp.group!="All Other LFL") %>% 
   group_by(`Sales Year`) %>% 
-  summarise(Total=sum(`Sales Qty`),p.32=sum(`Sales Qty`[lamp.group=="T8 - 32W"])/Total,p.RW=sum(`Sales Qty`[lamp.group=="T8 - Reduced Wattage"])/Total,p.TLED=sum(`Sales Qty`[lamp.group=="LED Tubes"])/Total) %>% 
+  summarise(Total=sum(Sales),p.32=sum(Sales[Category=="32W"])/Total,p.RW=sum(Sales[Category%in%c("28W","25W")])/Total,p.TLED=sum(Sales[Category=="T8LED4ft"])/Total) %>% 
   mutate(lfl.rw=p.RW/(1-p.TLED),lfl_bulbs=Total*(1-p.TLED))
 
-relevant.data<-old.data %>% filter(`Lighting Technology Type`=="Linear Fluorescent") %>% 
-  mutate(T8=ifelse(grepl("T8",`General Category`),"T8",""),Wattage=ifelse(Subcategory%in%c("32W","25W","28W"),Subcategory,"Other"),lamp.group=ifelse(T8=="T8",paste(T8,"-",Wattage),`General Category`)) %>% filter(T8=="T8")
-table(relevant.data$lamp.group)
+relevant.data<-updated_data %>% 
+  # filter(`Lighting Technology Type`=="Linear Fluorescent") %>% 
+  filter(Category%in%c("32W","28W","25W","T8LED4ft")) %>% 
+  # mutate(T8=ifelse(grepl("T8",`General Category`),"T8",""),Wattage=ifelse(Subcategory%in%c("32W","25W","28W"),Subcategory,"Other"),lamp.group=ifelse(T8=="T8",paste(T8,"-",Wattage),`General Category`)) %>% filter(T8=="T8") %>% 
+  ungroup()
+table(relevant.data$Category)
 
-rwlr.agg<-relevant.data %>% group_by(State,`Sales Year`,lamp.group) %>% 
-  summarise(Total.bulbs=sum(`Sales Qty`))
+rwlr.agg<-relevant.data %>% 
+  group_by(State=Ship_State,`Sales Year`,Category) %>% 
+  summarise(Total.bulbs=sum(Sales))
 rwlr.agg$facet_lab<-NA
 rwlr.agg$facet_lab[rwlr.agg$State=="ID"]<-"Idaho"
 rwlr.agg$facet_lab[rwlr.agg$State=="MT"]<-"Montana"
 rwlr.agg$facet_lab[rwlr.agg$State=="OR"]<-"Oregon"
 rwlr.agg$facet_lab[rwlr.agg$State=="WA"]<-"Washington"
 
-levels.t8<-rev(c("T8 - 25W"="#095C9C","T8 - 28W"="#5EBCDF","T8 - 32W"="#639c2a","T8 - Other"="#FABC2B"))
-t8.plot<-ggplot(rwlr.agg)+
-  geom_area(aes(x=`Sales Year`,y=Total.bulbs,fill=factor(lamp.group,levels = names(levels.t8))),stat = "identity",position = "fill")+
+levels.t8<-rev(c("25W"="#095C9C","28W"="#5EBCDF","32W"="#639c2a","T8 - Other"="#FABC2B"))
+t8.plot<-ggplot(rwlr.agg %>% filter(Category!="T8LED4ft"))+
+  geom_area(aes(x=`Sales Year`,y=Total.bulbs,fill=factor(Category,levels = names(levels.t8))),stat = "identity",position = "fill")+
   facet_wrap(.~facet_lab,scales = "free",ncol = 2)+
   theme(
     legend.position = "right",
@@ -150,6 +157,25 @@ t8.plot<-ggplot(rwlr.agg)+
   scale_y_continuous(labels = scales::percent)+
   labs(y="Percent of Market",fill="Lamp Type")
 # ggsave(t8.plot,file="/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/T8_Plot.jpg",device = "jpeg",width = 7,height=3.8)
+ggsave(t8.plot,file="~/desktop/T8_Plot.jpg",device = "jpeg",width = 7,height=3.8)
+
+levels.ll<-rev(c("TLED"="#FABC2B","LFL"="#2F2860"))
+ll.dat<-rwlr.agg %>% 
+  mutate(lfl=ifelse(Category=="T8LED4ft","TLED","LFL")) %>% 
+  group_by(State,`Sales Year`,lfl,facet_lab) %>% 
+  summarise(Total.bulbs=sum(Total.bulbs))
+ll.plot<-ggplot(ll.dat)+
+  geom_area(aes(x=`Sales Year`,y=Total.bulbs,fill=factor(lfl,levels = names(levels.ll))),stat = "identity",position = "fill")+
+  facet_wrap(.~facet_lab,scales = "free",ncol = 2)+
+  theme(
+    legend.position = "right",
+    panel.background = element_rect(fill = "gray95"),
+    text = element_text(size = 12))+
+  scale_fill_manual(values=levels.ll)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(y="Percent of Market",fill="Lamp Type")
+# ggsave(ll.plot,file="/volumes/Projects/416044 - NEEA RWLR LTMT/Admin/Proposal/ll_Plot.jpg",device = "jpeg",width = 7,height=3.8)
+ggsave(ll.plot,file="~/desktop/ll_Plot.jpg",device = "jpeg",width = 7,height=3.8)
 
 # National Chart
 for.plot<-data.frame(
