@@ -69,11 +69,12 @@ for_plot$variable<-as.character(as.vector(for_plot$variable))
 for_plot$variable[for_plot$variable=="W32"]<-"32W"
 levels.np<-rev(c("RW"="#5EBCDF","32W"="#639c2a"))
 
-ggplot(for_plot)+
+ggplot(for_plot,aes(label=paste0(round(value,3)*100,"%")))+
   geom_bar(aes(x=Year,y=value,fill=variable),position = "stack",stat = "identity",width = .5)+
+  geom_text(aes(x=Year,y=value),size = 3, position = position_stack(vjust = 0.5))+
   scale_fill_manual(values = levels.np)+
   scale_y_continuous(labels = scales::percent)+
-  labs(fill="Bulb Type",y="LFL Market Penetration")+
+  labs(fill="LFL Type",y="Sales Share of LFLs")+
   theme(text = element_text(family="Gill Sans",size = 12))
 ggsave(file="~/desktop/RW1.jpg",device = "jpeg",height = 4,width = 6.5)
 
@@ -103,11 +104,12 @@ for_plot$variable[for_plot$variable=="W32"]<-"32W"
 
 levels.np<-rev(c("RW"="#5EBCDF","32W"="#639c2a"))
 
-ggplot(for_plot)+
+ggplot(for_plot,aes(label=scales::percent(value,accuracy = .1)))+
   geom_bar(aes(x=Year,y=value,fill=variable),position = "stack",stat = "identity",width = .5)+
+  geom_text(aes(x=Year,y=value),size = 3, position = position_stack(vjust = 0.5))+
   scale_fill_manual(values = levels.np)+
   scale_y_continuous(labels = scales::percent)+
-  labs(fill="Bulb Type",y="LFL Market Penetration")+
+  labs(fill="LFL Type",y="Sales Share of LFLs")+
   theme(text = element_text(family="Gill Sans",size=12))
 ggsave(file="~/desktop/RW2.jpg",device = "jpeg",height = 4,width = 6.5)
 
@@ -187,17 +189,19 @@ for.plot<-data.frame(
 for.plot$variable<-as.character(for.plot$variable)
 
 for.plot$variable[for.plot$variable=="A"]<-"Regional Participants"
-for.plot$variable[for.plot$variable=="B"]<-"National Manufacturer\nRegional Average"
+for.plot$variable[for.plot$variable=="B"]<-"National Manufacturer\nRegional Estimate"
 for.plot$variable[for.plot$variable=="C"]<-"Regional Non-participants"
-for.plot$variable[for.plot$variable=="D"]<-"National Manufacturer\nNational Average"
-for.plot$variable<-factor(for.plot$variable,c("Regional Participants","National Manufacturer\nRegional Average","Regional Non-participants","National Manufacturer\nNational Average"))
-for.plot$value<-round(for.plot$value,2)
+for.plot$variable[for.plot$variable=="D"]<-"National Manufacturer\nNational Estimate"
+for.plot$variable<-factor(for.plot$variable,c("Regional Participants","National Manufacturer\nRegional Estimate","Regional Non-participants","National Manufacturer\nNational Estimate"))
+for.plot$value<-round(for.plot$value,3)
 
-ggplot(for.plot)+
+ggplot(for.plot,aes(label=scales::percent(value,accuracy = .1)))+
   geom_bar(aes(x=variable, y=value,fill=variable),stat = "identity")+
-  scale_fill_manual(values = EEcolors4)+
-  scale_y_continuous(labels = scales::percent)+
-  labs(x="RW Market Pentration Source",y="RW Market Penetration")+
+  geom_text(aes(x=variable,y=value),size = 3, position = position_stack(vjust = 0.5))+
+  # scale_fill_manual(values = c(EEcolors4[3],EEcolors7[6],EEcolors7[7],EEcolors4[4]))+
+  scale_fill_manual(values = c("#5EBCDF","#C1C1C1","#5EBCDF","#C1C1C1"))+
+  scale_y_continuous(labels = scales::percent(seq(0,.5,.1),accuracy = 1),)+
+  labs(x="RW Lamp Sales Share Source",y="RW Lamp Sales Share of LFLs")+
   theme(text=element_text(family = "Gill Sans",size=12))+
   guides(fill=FALSE)
 ggsave(file="~/desktop/RW3.jpg",device = "jpeg",height = 4,width = 6.5)
