@@ -15,11 +15,11 @@ states_gis$study[states_gis$state_abbv%in%c("WA","ID","MT","OR")]<-"EULR"
 table(states_gis$study)
 
 ggplot(
-  states_gis
+  states_gis %>% filter(study=="HEUS")
   )+
   geom_polygon(aes(x=long,y=lat,group=group,fill=study,alpha=study,color=study=="HEUS"))+
   scale_fill_brewer(type="qual",palette = 2)+
-  scale_alpha_manual(values = c(.5,1,.1))+
+  scale_alpha_manual(values = c(.3,1,.1))+
   scale_color_manual(values=c(NA,"black"))+
   theme_void()+
   # coord_map(ylim=c(30,45),xlim=c(-125,-112))+
@@ -32,10 +32,10 @@ ggplot(
   )+
   geom_polygon(aes(x=long,y=lat,group=group,fill=study,alpha=study,color=study=="EULR"))+
   scale_fill_brewer(type="qual",palette = 2)+
-  scale_alpha_manual(values = c(1,.5,.1))+
+  scale_alpha_manual(values = c(1,.3,.1))+
   scale_color_manual(values=c(NA,"black"))+
   theme_void()+
-  # coord_map(ylim = c(35,50))+
+  # coord_map(ylim = c(35,50),xlim=c(-125,-110))+
   coord_map(xlim=c(-125,-110))+
   guides(fill=F,alpha=F,color=F)
 ggsave("~/desktop/ACEEE 2020/eulr_map.jpg",height = 8,width = 4)
