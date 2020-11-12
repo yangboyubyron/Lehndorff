@@ -71,11 +71,13 @@ levels.np<-rev(c("RW"="#5EBCDF","32W"="#639c2a"))
 
 ggplot(for_plot,aes(label=paste0(round(value,3)*100,"%")))+
   geom_bar(aes(x=Year,y=value,fill=variable),position = "stack",stat = "identity",width = .5)+
-  geom_text(aes(x=Year,y=value),size = 3, position = position_stack(vjust = 0.5))+
+  geom_text(aes(x=Year,y=value),size = 4, position = position_stack(vjust = 0.5))+
   scale_fill_manual(values = levels.np)+
-  scale_y_continuous(labels = scales::percent)+
+  scale_y_continuous(labels = scales::percent,expand = c(0,0),breaks=c(0,1))+
   labs(fill="LFL Type",y="Sales Share of LFLs")+
-  theme(text = element_text(family="Gill Sans",size = 12))
+  theme(text = element_text(family="Gill Sans",size = 12),
+        panel.background = element_rect(fill="white"),
+        axis.line = element_line(color="black"))
 ggsave(file="~/desktop/RW1.jpg",device = "jpeg",height = 4,width = 6.5)
 
 MP_non<-other %>% 
@@ -106,11 +108,13 @@ levels.np<-rev(c("RW"="#5EBCDF","32W"="#639c2a"))
 
 ggplot(for_plot,aes(label=scales::percent(value,accuracy = .1)))+
   geom_bar(aes(x=Year,y=value,fill=variable),position = "stack",stat = "identity",width = .5)+
-  geom_text(aes(x=Year,y=value),size = 3, position = position_stack(vjust = 0.5))+
+  geom_text(aes(x=Year,y=value),size = 4, position = position_stack(vjust = 0.5))+
   scale_fill_manual(values = levels.np)+
-  scale_y_continuous(labels = scales::percent)+
+  scale_y_continuous(labels = scales::percent,expand = c(0,0),breaks=c(0,1))+
   labs(fill="LFL Type",y="Sales Share of LFLs")+
-  theme(text = element_text(family="Gill Sans",size=12))
+  theme(text = element_text(family="Gill Sans",size = 12),
+        panel.background = element_rect(fill="white"),
+        axis.line = element_line(color="black"))
 ggsave(file="~/desktop/RW2.jpg",device = "jpeg",height = 4,width = 6.5)
 
 respondents<-MP_non %>%
@@ -148,7 +152,7 @@ rwlr.agg$facet_lab[rwlr.agg$State=="OR"]<-"Oregon"
 rwlr.agg$facet_lab[rwlr.agg$State=="WA"]<-"Washington"
 
 levels.t8<-rev(c("25W"="#095C9C","28W"="#5EBCDF","32W"="#639c2a","T8 - Other"="#FABC2B"))
-t8.plot<-ggplot(rwlr.agg %>% filter(Category!="T8LED4ft"))+
+t8.plot<-ggplot(rwlr.agg %>% filter(Category!="T8LED4ft"&`Sales Year`<2019))+
   geom_area(aes(x=`Sales Year`,y=Total.bulbs,fill=factor(Category,levels = names(levels.t8))),stat = "identity",position = "fill")+
   facet_wrap(.~facet_lab,scales = "free",ncol = 2)+
   theme(
@@ -166,7 +170,7 @@ ll.dat<-rwlr.agg %>%
   mutate(lfl=ifelse(Category=="T8LED4ft","TLED","LFL")) %>% 
   group_by(State,`Sales Year`,lfl,facet_lab) %>% 
   summarise(Total.bulbs=sum(Total.bulbs))
-ll.plot<-ggplot(ll.dat)+
+ll.plot<-ggplot(ll.dat %>% filter(`Sales Year`<2019))+
   geom_area(aes(x=`Sales Year`,y=Total.bulbs,fill=factor(lfl,levels = names(levels.ll))),stat = "identity",position = "fill")+
   facet_wrap(.~facet_lab,scales = "free",ncol = 2)+
   theme(
@@ -197,12 +201,14 @@ for.plot$value<-round(for.plot$value,3)
 
 ggplot(for.plot,aes(label=scales::percent(value,accuracy = .1)))+
   geom_bar(aes(x=variable, y=value,fill=variable),stat = "identity")+
-  geom_text(aes(x=variable,y=value),size = 3, position = position_stack(vjust = 0.5))+
-  # scale_fill_manual(values = c(EEcolors4[3],EEcolors7[6],EEcolors7[7],EEcolors4[4]))+
-  scale_fill_manual(values = c("#5EBCDF","#C1C1C1","#5EBCDF","#C1C1C1"))+
-  scale_y_continuous(labels = scales::percent(seq(0,.5,.1),accuracy = 1),)+
+  geom_text(aes(x=variable,y=value),size = 4, position = position_stack(vjust = 0.5))+
+  scale_fill_manual(values = c(EEcolors4[3],EEcolors7[6],EEcolors4[4],"#f36c21"))+
+  # scale_fill_manual(values = c("#5EBCDF","#C1C1C1","#5EBCDF","#C1C1C1"))+
+  scale_y_continuous(labels = scales::percent(seq(0,.5,.1),accuracy = 1),expand = c(0,0),limits = c(0,.5))+
   labs(x="RW Lamp Sales Share Source",y="RW Lamp Sales Share of LFLs")+
-  theme(text=element_text(family = "Gill Sans",size=12))+
+  theme(text = element_text(family="Gill Sans",size = 12),
+        panel.background = element_rect(fill="white"),
+        axis.line = element_line(color="black"))+
   guides(fill=FALSE)
 ggsave(file="~/desktop/RW3.jpg",device = "jpeg",height = 4,width = 6.5)
 
